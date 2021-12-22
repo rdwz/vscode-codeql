@@ -196,7 +196,13 @@ export class RemoteQueriesInterfaceManager {
   private async handleDownloadLinkClicked(msg: RemoteQueryDownloadLinkClickedMessage): Promise<void> {
     const credentials = await Credentials.initialize(this.ctx);
 
-    const filePath = await downloadArtifactFromLink(credentials, msg.downloadLink);
+    const downloadResult = await downloadArtifactFromLink(credentials, msg.downloadLink);
+    if (downloadResult.isErr) {
+      void this.logger.log(downloadResult.error);
+      await vscode.window.showErrorMessage('Could not download result file for remote query.');
+    }
+
+    const filePath = downloadResult.value;
     const isDir = (await fs.stat(filePath)).isDirectory();
     const message = `Result file saved at ${filePath}`;
     if (isDir) {

@@ -1,7 +1,6 @@
 import * as unzipper from 'unzipper';
 import * as path from 'path';
 import * as fs from 'fs-extra';
-import { showAndLogWarningMessage } from '../helpers';
 import { Credentials } from '../authentication';
 import { logger } from '../logging';
 import { tmpDir } from '../run-queries';
@@ -9,6 +8,7 @@ import { RemoteQueryWorkflowResult } from './remote-query-workflow-result';
 import { DownloadLink } from './download-link';
 import { RemoteQuery } from './remote-query';
 import { RemoteQueryResultIndex, RemoteQueryResultIndexItem } from './remote-query-result-index';
+import { AsyncValueResult, ValueResult } from '../result';
 
 interface ApiResultIndexItem {
   nwo: string;
@@ -18,10 +18,23 @@ interface ApiResultIndexItem {
   sarif_file_size?: number;
 }
 
+interface ApiArtifact {
+  id: number;
+  node_id: string;
+  name: string;
+  size_in_bytes: number;
+  url: string;
+  archive_download_url: string;
+  expired: boolean;
+  created_at: string;
+  expires_at: string;
+  updated_at: string;
+}
+
 export async function getRemoteQueryIndex(
   credentials: Credentials,
   remoteQuery: RemoteQuery
-): Promise<RemoteQueryResultIndex | undefined> {
+): AsyncValueResult<RemoteQueryResultIndex> {
   const controllerRepo = remoteQuery.controllerRepository;
   const owner = controllerRepo.owner;
   const repoName = controllerRepo.name;
@@ -30,51 +43,83 @@ export async function getRemoteQueryIndex(
   const workflowUri = `https://github.com/${owner}/${repoName}/actions/runs/${workflowRunId}`;
   const artifactsUrlPath = `/repos/${owner}/${repoName}/actions/artifacts`;
 
-  const artifactList = await listWorkflowRunArtifacts(credentials, owner, repoName, workflowRunId);
-  const resultIndexArtifactId = getArtifactIDfromName('result-index', workflowUri, artifactList);
-  const resultIndexItems = await getResultIndexItems(credentials, owner, repoName, resultIndexArtifactId);
+  const artifactListResult = await listWorkflowRunArtifacts(credentials, owner, repoName, workflowRunId);
+  if (artifactListResult.isErr) {
+    return ValueResult.fail(artifactListResult.error);
+  }
+  const artifactList = artifactListResult.value;
 
-  const allResultsArtifactId = getArtifactIDfromName('all-results', workflowUri, artifactList);
+  const resultIndexArtifactId = tryGetArtifactIDfromName('result-index', artifactList);
+  if (!resultIndexArtifactId) {
+    return ValueResult.fail(`Could not find artifact with name "result-index" in workflow ${workflowUri}.
+        Please check whether the workflow run has successfully completed.`);
+  }
 
-  const items = resultIndexItems.map(item => {
-    const artifactId = getArtifactIDfromName(item.id, workflowUri, artifactList);
+  const indexItemsResult = await getResultIndexItems(credentials, owner, repoName, resultIndexArtifactId);
+  if (indexItemsResult.isErr) {
+    return ValueResult.fail(indexItemsResult.error);
+  }
 
-    return {
+  const indexItems = indexItemsResult.value;
+
+  const allResultsArtifactId = tryGetArtifactIDfromName('all-results', artifactList);
+  if (!allResultsArtifactId) {
+    return ValueResult.fail(`Could not find artifact with name "all-results" in workflow ${workflowUri}.`);
+  }
+
+  const items = [];
+  for (const item of indexItems) {
+    const artifactId = tryGetArtifactIDfromName(item.id, artifactList);
+    if (!artifactId) {
+      return ValueResult.fail(`Could not find artifact with name "${item.id}" in workflow ${workflowUri}.`);
+    }
+
+    items.push({
       id: item.id.toString(),
       artifactId: artifactId,
       nwo: item.nwo,
       resultCount: item.results_count,
       bqrsFileSize: item.bqrs_file_size,
       sarifFileSize: item.sarif_file_size,
-    } as RemoteQueryResultIndexItem;
-  });
+    } as RemoteQueryResultIndexItem);
+  }
 
-  return {
+  return ValueResult.ok({
     allResultsArtifactId,
     artifactsUrlPath,
     items,
-  };
+  });
 }
 
 export async function downloadArtifactFromLink(
   credentials: Credentials,
   downloadLink: DownloadLink
-): Promise<string> {
+): AsyncValueResult<string> {
   const octokit = await credentials.getOctokit();
 
   // Download the zipped artifact.
-  const response = await octokit.request(`GET ${downloadLink.urlPath}/zip`, {});
+  let data: ArrayBuffer;
+  try {
+    const response = await octokit.request(`GET ${downloadLink.urlPath}/zip`, {});
+    data = response.data;
+  }
+  catch (error) {
+    const errorMsg = (error as Error).message;
+    return ValueResult.fail(`Could not download artifact. Error ${errorMsg}`);
+  }
 
   const zipFilePath = path.join(tmpDir.name, `${downloadLink.id}.zip`);
-  await saveFile(`${zipFilePath}`, response.data as ArrayBuffer);
+  await saveFile(`${zipFilePath}`, data);
 
   // Extract the zipped artifact.
   const extractedPath = path.join(tmpDir.name, downloadLink.id);
   await unzipFile(zipFilePath, extractedPath);
 
-  return downloadLink.innerFilePath
+  const result = downloadLink.innerFilePath
     ? path.join(extractedPath, downloadLink.innerFilePath)
     : extractedPath;
+
+  return ValueResult.ok(result);
 }
 
 /**
@@ -90,19 +135,26 @@ async function getResultIndexItems(
   owner: string,
   repo: string,
   artifactId: number
-): Promise<ApiResultIndexItem[]> {
-  const artifactPath = await downloadArtifact(credentials, owner, repo, artifactId);
+): AsyncValueResult<ApiResultIndexItem[]> {
+  const downloadResult = await downloadArtifact(credentials, owner, repo, artifactId);
+  if (downloadResult.isErr) {
+    return ValueResult.fail(downloadResult.error);
+  }
+
+  const artifactPath = downloadResult.value;
+
   const indexFilePath = path.join(artifactPath, 'index.json');
   if (!(await fs.pathExists(indexFilePath))) {
-    void showAndLogWarningMessage('Could not find an `index.json` file in the result artifact.');
-    return [];
+    return ValueResult.fail('Could not find index.json file in the result artifact');
   }
+
   const resultIndex = await fs.readFile(path.join(artifactPath, 'index.json'), 'utf8');
 
   try {
     return JSON.parse(resultIndex);
   } catch (error) {
-    throw new Error(`Invalid result index file: ${error}`);
+    const errorMsg = (error as Error).message;
+    return ValueResult.fail(`Invalid result index file: ${errorMsg}`);
   }
 }
 
@@ -152,15 +204,20 @@ async function listWorkflowRunArtifacts(
   owner: string,
   repo: string,
   workflowRunId: number
-) {
+): AsyncValueResult<ApiArtifact[]> {
   const octokit = await credentials.getOctokit();
-  const response = await octokit.rest.actions.listWorkflowRunArtifacts({
-    owner,
-    repo,
-    run_id: workflowRunId,
-  });
+  try {
+    const response = await octokit.rest.actions.listWorkflowRunArtifacts({
+      owner,
+      repo,
+      run_id: workflowRunId,
+    });
 
-  return response.data.artifacts;
+    return ValueResult.ok(response.data.artifacts);
+  }
+  catch (error) {
+    return ValueResult.fail((error as Error).message);
+  }
 }
 
 /**
@@ -168,20 +225,11 @@ async function listWorkflowRunArtifacts(
  * @param artifacts An array of artifact details (from the "list workflow run artifacts" API response).
  * @returns The artifact ID corresponding to the given artifact name.
  */
-function getArtifactIDfromName(
+function tryGetArtifactIDfromName(
   artifactName: string,
-  workflowUri: string,
   artifacts: Array<{ id: number, name: string }>
-): number {
+): number | undefined {
   const artifact = artifacts.find(a => a.name === artifactName);
-
-  if (!artifact) {
-    const errorMessage =
-      `Could not find artifact with name ${artifactName} in workflow ${workflowUri}.
-      Please check whether the workflow run has successfully completed.`;
-    throw Error(errorMessage);
-  }
-
   return artifact?.id;
 }
 
@@ -198,18 +246,28 @@ async function downloadArtifact(
   owner: string,
   repo: string,
   artifactId: number
-): Promise<string> {
+): AsyncValueResult<string> {
   const octokit = await credentials.getOctokit();
-  const response = await octokit.rest.actions.downloadArtifact({
-    owner,
-    repo,
-    artifact_id: artifactId,
-    archive_format: 'zip',
-  });
+  let data: ArrayBuffer;
+
+  try {
+    const response = await octokit.rest.actions.downloadArtifact({
+      owner,
+      repo,
+      artifact_id: artifactId,
+      archive_format: 'zip',
+    });
+    data = response.data as ArrayBuffer;
+  }
+  catch (error) {
+    return ValueResult.fail((error as Error).message);
+  }
+
   const artifactPath = path.join(tmpDir.name, `${artifactId}`);
-  await saveFile(`${artifactPath}.zip`, response.data as ArrayBuffer);
+  await saveFile(`${artifactPath}.zip`, data);
   await unzipFile(`${artifactPath}.zip`, artifactPath);
-  return artifactPath;
+
+  return ValueResult.ok(artifactPath);
 }
 
 async function saveFile(filePath: string, data: ArrayBuffer): Promise<void> {

@@ -54,13 +54,14 @@ export class RemoteQueriesManager {
     const executionEndTime = new Date();
 
     if (queryResult.status === 'CompletedSuccessfully') {
-      const resultIndex = await getRemoteQueryIndex(credentials, query);
-      if (!resultIndex) {
+      const indexResult = await getRemoteQueryIndex(credentials, query);
+      if (indexResult.isErr) {
+        void this.logger.log(indexResult.error);
         void showAndLogErrorMessage(`There was an issue retrieving the result for the query ${query.queryName}`);
         return;
       }
 
-      const queryResult = this.mapQueryResult(executionEndTime, resultIndex);
+      const queryResult = this.mapQueryResult(executionEndTime, indexResult.value);
 
       const totalResultCount = queryResult.analysisResults.reduce((acc, cur) => acc + cur.resultCount, 0);
       const message = `Query "${query.queryName}" run on ${query.repositories.length} repositories and returned ${totalResultCount} results`;
