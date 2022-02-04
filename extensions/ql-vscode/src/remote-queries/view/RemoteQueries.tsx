@@ -17,6 +17,7 @@ import DownloadButton from './DownloadButton';
 import { AnalysisResults } from '../shared/analysis-result';
 import DownloadSpinner from './DownloadSpinner';
 import CollapsibleItem from './CollapsibleItem';
+import FullScreenModal from './FullScreenModal';
 
 const numOfReposInContractedMode = 10;
 
@@ -257,6 +258,7 @@ const AnalysesResults = ({ analysesResults, totalResults }: { analysesResults: A
 export function RemoteQueries(): JSX.Element {
   const [queryResult, setQueryResult] = useState<RemoteQueryResult>(emptyQueryResult);
   const [analysesResults, setAnalysesResults] = useState<AnalysisResults[]>([]);
+  const [isCodePathsModalOpen, setCodePathsModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     window.addEventListener('message', (evt: MessageEvent) => {
@@ -286,6 +288,19 @@ export function RemoteQueries(): JSX.Element {
         <QueryInfo {...queryResult} />
         <Summary queryResult={queryResult} analysesResults={analysesResults} />
         <AnalysesResults analysesResults={analysesResults} totalResults={queryResult.totalResultCount} />
+        <div id="code-paths-modal" />
+        <div>
+          <button onClick={() => { setCodePathsModalOpen(true); }}>
+            Show paths
+          </button>
+          {isCodePathsModalOpen && (
+            <FullScreenModal
+              setOpen={setCodePathsModalOpen}
+              containerElementId='code-paths-modal'>
+              ...Some code paths here...
+            </FullScreenModal>
+          )}
+        </div>
       </ThemeProvider>
     </div>;
   } catch (err) {
