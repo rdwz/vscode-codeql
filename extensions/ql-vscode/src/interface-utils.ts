@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 import * as os from 'os';
+
 import {
   Uri,
   Location,
@@ -137,6 +138,11 @@ export function getHtmlForWebview(
     ? 'https://*.vscode-webview.net/ vscode-file: \'unsafe-inline\''
     : `'nonce-${nonce}'`;
 
+  const scriptSrc = `nonce-${nonce} https://*.vscode-resource.vscode-webview.net`;
+
+  const imgSrc = 'data:';
+  // https://file+.vscode-resource.vscode-webview.net/Users/charisk/dev/vscode-codeql/extensions/ql-vscode/out/vendors-node_modules_monaco-editor_esm_vs_basic-languages_javascript_javascript_js.js
+
   /*
    * Content security policy:
    * default-src: allow nothing by default.
@@ -149,7 +155,7 @@ export function getHtmlForWebview(
 <html>
   <head>
     <meta http-equiv="Content-Security-Policy"
-          content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${styleSrc}; connect-src ${webview.cspSource};">
+          content="default-src 'none'; script-src ${scriptSrc}; style-src ${styleSrc}; connect-src ${webview.cspSource}; img-src ${imgSrc}">
         ${stylesheetsHtmlLines.join(`    ${os.EOL}`)}
   </head>
   <body>

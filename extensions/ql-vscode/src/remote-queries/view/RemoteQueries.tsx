@@ -18,6 +18,8 @@ import DownloadSpinner from './DownloadSpinner';
 import CollapsibleItem from './CollapsibleItem';
 import { CodeSquareIcon, FileIcon, FileSymlinkFileIcon, RepoIcon } from '@primer/octicons-react';
 
+import MonacoEditor, { monaco } from 'react-monaco-editor';
+
 const numOfReposInContractedMode = 10;
 
 const emptyQueryResult: RemoteQueryResult = {
@@ -290,6 +292,46 @@ export function RemoteQueries(): JSX.Element {
     return <div>Waiting for results to load.</div>;
   }
 
+  const lines = [
+    'const x = 10;',
+    'const y = x + 10;',
+    'const z = y + 10;'
+  ];
+
+  const code = lines.join('\n');
+
+  const options = {
+    selectOnLineNumbers: false,
+    readOnly: true,
+    domReadOnly: true,
+    deltaDecorations: [
+      {
+        range: new monaco.Range(2, 1, 2, 10),
+        options: {
+          isWholeLine: true,
+          linesDecorationsClassName: 'myLineDecoration'
+        }
+      }
+    ]
+  };
+
+  // const decorations = editor.deltaDecorations(
+  //   [],
+  //   [
+  //     {
+  //       range: new monaco.Range(3, 1, 5, 1),
+  //       options: {
+  //         isWholeLine: true,
+  //         linesDecorationsClassName: 'myLineDecoration'
+  //       }
+  //     },
+  //     {
+  //       range: new monaco.Range(7, 1, 7, 24),
+  //       options: { inlineClassName: 'myInlineDecoration' }
+  //     }
+  //   ]
+  // );
+
   const showAnalysesResults = false;
 
   try {
@@ -299,6 +341,14 @@ export function RemoteQueries(): JSX.Element {
         <QueryInfo {...queryResult} />
         <Summary queryResult={queryResult} analysesResults={analysesResults} />
         {showAnalysesResults && <AnalysesResults analysesResults={analysesResults} totalResults={queryResult.totalResultCount} />}
+        <MonacoEditor
+          width="800"
+          height="600"
+          language="javascript"
+          theme="vs-dark"
+          value={code}
+          options={options}
+        />
       </ThemeProvider>
     </div>;
   } catch (err) {

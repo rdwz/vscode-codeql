@@ -52,3 +52,7 @@
 .vscode-codeql__analysis-result-file-link {
   vertical-align: middle;
 }
+
+.myLineDecoration {
+  background-color: yellow !important;
+}
