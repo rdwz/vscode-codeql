@@ -59,3 +59,7 @@
     Liberation Mono, monospace;
   color: var(--vscode-editor-foreground);
 }
+
+.charis-monaco-editor-highlight {
+  background-color: grey !important;
+}

@@ -137,6 +137,30 @@ export function getHtmlForWebview(
     ? 'https://*.vscode-webview.net/ vscode-file: \'unsafe-inline\''
     : `'nonce-${nonce}'`;
 
+  const scriptSrc = `'nonce-${nonce}' ${webview.cspSource}`;
+
+  // Issues:
+  //  - Monaco uses web workers to organise language processing in the background
+  //    to avoid blocking the UI thread. Our current CSP config shows this error:
+  //        Refused to create a worker from 'blob:vscode-webview://7c042d06-a7fe-40ca-a46d-c2cfb80f7d7a/9522e8c9-6694-469e-9e3e-2bdc8d3d6275' because it violates the following Content Security Policy directive: "script-src nonce-UeD/G30pmLDOtlPirbjq/g== https://*.vscode-resource.vscode-webview.net". Note that 'worker-src' was not explicitly set, so 'script-src' is used as a fallback.
+  //    It however has a fallback to load on the main thread if that fails, 
+  //    so all the functionality still works but it it can potentially block the UI thread.
+  //    Options:
+  //      - Do nothing, accept there will be an error in the console (assuming the UI blocking
+  //      isn't actually an issue because we're only using monaco for read only views (not editing).
+  //      - We could relax CSP and add worker-src: 'blob:', but that is almost the same as allowing unsafe
+  //      which is definitly not ideal.
+  //      - Some other solution to load the worker that I'm not aware of, but note:
+  //      https://code.visualstudio.com/api/extension-guides/webview#using-web-workers
+  //      
+  //  - Monaco tries to load an image which causes the following CSP error:
+  //        Refused to load the image 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAz0lEQVRIx2NgYGBY/R8I/vx5eelX3n82IJ9FxGf6tksvf/8FiTMQAcAGQMDvSwu09abffY8QYSAScNk45G198eX//yev73/4///701eh//kZSARckrNBRvz//+8+6ZohwCzjGNjdgQxkAg7B9WADeBjIBqtJCbhRA0YNoIkBSNmaPEMoNmA0FkYNoFKhapJ6FGyAH3nauaSmPfwI0v/3OukVi0CIZ+F25KrtYcx/CTIy0e+rC7R1Z4KMICVTQQ14feVXIbR695u14+Ir4gwAAD49E54wc1kWAAAAAElFTkSuQmCC' because it violates the following Content Security Policy directive: "img-src https://*.vscode-webview.net".
+  //    The image (an image of a cursor?!) doesn't seem to actually be used.
+  //    Options:
+  //      - Do nothing, accept there will be an error in the console
+  //      - We could relax CSP and add img-src: 'data:'. Again this is not ideal security wise.
+  //      - We could poke further to see whether we could stop monaco from trying to load that image
+
   /*
    * Content security policy:
    * default-src: allow nothing by default.
@@ -149,7 +173,7 @@ export function getHtmlForWebview(
 <html>
   <head>
     <meta http-equiv="Content-Security-Policy"
-          content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${styleSrc}; connect-src ${webview.cspSource};">
+          content="default-src 'none'; script-src ${scriptSrc}; style-src ${styleSrc}; connect-src ${webview.cspSource}; img-src ${webview.cspSource};">
         ${stylesheetsHtmlLines.join(`    ${os.EOL}`)}
   </head>
   <body>
