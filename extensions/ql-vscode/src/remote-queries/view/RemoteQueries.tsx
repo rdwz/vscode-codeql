@@ -339,8 +339,6 @@ export function RemoteQueries(): JSX.Element {
   const showAnalysesResults = false;
 
   const editorDidMount = (editor: monaco.editor.IStandaloneCodeEditor, monaco: any) => {
-    console.log('editorDidMount', editor);
-    editor.focus();
     editor.deltaDecorations([], [
       {
         range: new monaco.Range(
