@@ -304,35 +304,31 @@ export function RemoteQueries(): JSX.Element {
     selectOnLineNumbers: false,
     readOnly: true,
     domReadOnly: true,
-    deltaDecorations: [
-      {
-        range: new monaco.Range(2, 1, 2, 10),
-        options: {
-          isWholeLine: true,
-          linesDecorationsClassName: 'myLineDecoration'
-        }
-      }
-    ]
+    lineNumbers: (num: number) => `${num + 100}`,
+    minimap: {
+      enabled: false
+    }
   };
 
-  // const decorations = editor.deltaDecorations(
-  //   [],
-  //   [
-  //     {
-  //       range: new monaco.Range(3, 1, 5, 1),
-  //       options: {
-  //         isWholeLine: true,
-  //         linesDecorationsClassName: 'myLineDecoration'
-  //       }
-  //     },
-  //     {
-  //       range: new monaco.Range(7, 1, 7, 24),
-  //       options: { inlineClassName: 'myInlineDecoration' }
-  //     }
-  //   ]
-  // );
-
   const showAnalysesResults = false;
+
+  const editorDidMount = (editor: monaco.editor.IStandaloneCodeEditor, monaco: any) => {
+    console.log('editorDidMount', editor);
+    editor.focus();
+    editor.deltaDecorations([], [
+      {
+        range: new monaco.Range(
+          1, // Start line number
+          8, // Start column 
+          1, // End line number
+          12 // End column
+        ),
+        options: {
+          inlineClassName: 'myLineDecoration',
+        }
+      }
+    ]);
+  };
 
   try {
     return <div>
@@ -348,6 +344,7 @@ export function RemoteQueries(): JSX.Element {
           theme="vs-dark"
           value={code}
           options={options}
+          editorDidMount={editorDidMount}
         />
       </ThemeProvider>
     </div>;
