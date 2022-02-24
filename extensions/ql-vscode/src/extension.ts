@@ -70,7 +70,7 @@ import { InterfaceManager } from './interface';
 import { WebviewReveal } from './interface-utils';
 import { ideServerLogger, logger, queryServerLogger } from './logging';
 import { QueryHistoryManager } from './query-history';
-import { FullCompletedQueryInfo, FullQueryInfo } from './query-results';
+import { CompletedLocalQueryInfo, LocalQueryInfo } from './query-results';
 import * as qsClient from './queryserver-client';
 import { displayQuickQuery } from './quick-query';
 import { compileAndRunQueryAgainstDatabase, createInitialQueryInfo } from './run-queries';
@@ -90,13 +90,13 @@ import { CodeQlStatusBarHandler } from './status-bar';
 
 import { Credentials } from './authentication';
 import { RemoteQueriesManager } from './remote-queries/remote-queries-manager';
-import { RemoteQuery } from './remote-queries/remote-query';
 import { RemoteQueryResult } from './remote-queries/remote-query-result';
 import { URLSearchParams } from 'url';
 import { RemoteQueriesInterfaceManager } from './remote-queries/remote-queries-interface';
 import * as sampleData from './remote-queries/sample-data';
 import { handleDownloadPacks, handleInstallPackDependencies } from './packaging';
 import { AnalysesResultsManager } from './remote-queries/analyses-results-manager';
+import { RemoteQueryHistoryItem } from './remote-queries/remote-query-history-item';
 
 /**
  * extension.ts
@@ -443,7 +443,7 @@ async function activateWithInstalledDistribution(
   void logger.log('Initializing query history manager.');
   const queryHistoryConfigurationListener = new QueryHistoryConfigListener();
   ctx.subscriptions.push(queryHistoryConfigurationListener);
-  const showResults = async (item: FullCompletedQueryInfo) =>
+  const showResults = async (item: CompletedLocalQueryInfo) =>
     showResultsForCompletedQuery(item, WebviewReveal.Forced);
   const queryStorageDir = path.join(ctx.globalStorageUri.fsPath, 'queries');
   await fs.ensureDir(queryStorageDir);
@@ -455,11 +455,15 @@ async function activateWithInstalledDistribution(
     queryStorageDir,
     ctx,
     queryHistoryConfigurationListener,
-    showResults,
-    async (from: FullCompletedQueryInfo, to: FullCompletedQueryInfo) =>
+    async (from: CompletedLocalQueryInfo, to: CompletedLocalQueryInfo) =>
       showResultsForComparison(from, to),
   );
-  await qhm.readQueryHistory();
+
+  qhm.onWillOpenQueryItem(async item => {
+    if (item.t === 'local' && item.completed) {
+      await showResultsForCompletedQuery(item as CompletedLocalQueryInfo, WebviewReveal.Forced);
+    }
+  });
 
   ctx.subscriptions.push(qhm);
   void logger.log('Initializing results panel interface.');
@@ -480,8 +484,8 @@ async function activateWithInstalledDistribution(
   archiveFilesystemProvider.activate(ctx);
 
   async function showResultsForComparison(
-    from: FullCompletedQueryInfo,
-    to: FullCompletedQueryInfo
+    from: CompletedLocalQueryInfo,
+    to: CompletedLocalQueryInfo
   ): Promise<void> {
     try {
       await cmpm.showResults(from, to);
@@ -491,7 +495,7 @@ async function activateWithInstalledDistribution(
   }
 
   async function showResultsForCompletedQuery(
-    query: FullCompletedQueryInfo,
+    query: CompletedLocalQueryInfo,
     forceReveal: WebviewReveal
   ): Promise<void> {
     await intm.showResults(query, forceReveal, false);
@@ -521,7 +525,7 @@ async function activateWithInstalledDistribution(
       token.onCancellationRequested(() => source.cancel());
 
       const initialInfo = await createInitialQueryInfo(selectedQuery, databaseInfo, quickEval, range);
-      const item = new FullQueryInfo(initialInfo, queryHistoryConfigurationListener, source);
+      const item = new LocalQueryInfo(initialInfo, queryHistoryConfigurationListener, source);
       qhm.addQuery(item);
       try {
         const completedQueryInfo = await compileAndRunQueryAgainstDatabase(
@@ -534,15 +538,15 @@ async function activateWithInstalledDistribution(
           source.token,
         );
         item.completeThisQuery(completedQueryInfo);
-        await qhm.writeQueryHistory();
-        await showResultsForCompletedQuery(item as FullCompletedQueryInfo, WebviewReveal.NotForced);
+        await showResultsForCompletedQuery(item as CompletedLocalQueryInfo, WebviewReveal.NotForced);
         // Note we must update the query history view after showing results as the
         // display and sorting might depend on the number of results
       } catch (e) {
+        e.message = `Error running query: ${e.message}`;
         item.failureReason = e.message;
         throw e;
       } finally {
-        qhm.refreshTreeView();
+        await qhm.refreshTreeView();
         source.dispose();
       }
     }
@@ -639,7 +643,10 @@ async function activateWithInstalledDistribution(
       {
         title: 'Running query',
         cancellable: true
-      }
+      },
+
+      // Open the query server logger on error since that's usually where the interesting errors appear.
+      queryServerLogger
     )
   );
   interface DatabaseQuickPickItem extends QuickPickItem {
@@ -771,7 +778,11 @@ async function activateWithInstalledDistribution(
       {
         title: 'Running queries',
         cancellable: true
-      })
+      },
+
+      // Open the query server logger on error since that's usually where the interesting errors appear.
+      queryServerLogger
+    )
   );
   ctx.subscriptions.push(
     commandRunnerWithProgress(
@@ -784,7 +795,10 @@ async function activateWithInstalledDistribution(
       {
         title: 'Running query',
         cancellable: true
-      })
+      },
+      // Open the query server logger on error since that's usually where the interesting errors appear.
+      queryServerLogger
+    )
   );
 
   ctx.subscriptions.push(
@@ -799,7 +813,11 @@ async function activateWithInstalledDistribution(
       {
         title: 'Running query',
         cancellable: true
-      })
+      },
+
+      // Open the query server logger on error since that's usually where the interesting errors appear.
+      queryServerLogger
+    )
   );
 
   ctx.subscriptions.push(
@@ -810,12 +828,21 @@ async function activateWithInstalledDistribution(
       displayQuickQuery(ctx, cliServer, databaseUI, progress, token),
       {
         title: 'Run Quick Query'
-      }
+      },
+
+      // Open the query server logger on error since that's usually where the interesting errors appear.
+      queryServerLogger
     )
   );
 
   void logger.log('Initializing remote queries interface.');
-  const rqm = new RemoteQueriesManager(ctx, cliServer, queryStorageDir, logger);
+  const rqm = new RemoteQueriesManager(ctx, cliServer, qhm, queryStorageDir, logger);
+  ctx.subscriptions.push(rqm);
+
+  // wait until after the remote queries manager is initialized to read the query history
+  // since the rqm is notified of queries being added.
+  await qhm.readQueryHistory();
+
 
   registerRemoteQueryTextProvider();
 
@@ -848,9 +875,9 @@ async function activateWithInstalledDistribution(
 
   ctx.subscriptions.push(
     commandRunner('codeQL.monitorRemoteQuery', async (
-      query: RemoteQuery,
+      queryItem: RemoteQueryHistoryItem,
       token: CancellationToken) => {
-      await rqm.monitorRemoteQuery(query, token);
+      await rqm.monitorRemoteQuery(queryItem, token);
     }));
 
   ctx.subscriptions.push(

@@ -54,7 +54,7 @@ export class RemoteQueriesInterfaceManager {
       queryResult: this.buildViewModel(query, queryResult)
     });
 
-    await this.setAnalysisResults(this.analysesResultsManager.getAnalysesResults());
+    await this.setAnalysisResults(this.analysesResultsManager.getAnalysesResults(queryResult.queryId));
   }
 
   /**
@@ -82,7 +82,8 @@ export class RemoteQueriesInterfaceManager {
       totalResultCount: totalResultCount,
       executionTimestamp: this.formatDate(query.executionStartTime),
       executionDuration: executionDuration,
-      analysisSummaries: analysisSummaries
+      analysisSummaries: analysisSummaries,
+      analysisFailures: queryResult.analysisFailures,
     };
   }
 
@@ -260,8 +261,8 @@ export class RemoteQueriesInterfaceManager {
     return this.getPanel().webview.postMessage(msg);
   }
 
-  private getDuration(startTime: Date, endTime: Date): string {
-    const diffInMs = startTime.getTime() - endTime.getTime();
+  private getDuration(startTime: number, endTime: number): string {
+    const diffInMs = startTime - endTime;
     return this.formatDuration(diffInMs);
   }
 
@@ -281,7 +282,8 @@ export class RemoteQueriesInterfaceManager {
     }
   }
 
-  private formatDate = (d: Date): string => {
+  private formatDate = (millis: number): string => {
+    const d = new Date(millis);
     const datePart = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
     const timePart = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: 'numeric', hour12: true });
     return `${datePart} at ${timePart}`;

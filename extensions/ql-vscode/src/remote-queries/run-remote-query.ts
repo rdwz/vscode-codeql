@@ -302,8 +302,9 @@ export async function runRemoteQuery(
       message: 'Sending request'
     });
 
-    const workflowRunId = await runRemoteQueriesApiRequest(credentials, 'main', language, repositories, owner, repo, base64Pack, dryRun);
-    const queryStartTime = new Date();
+    // TODO When https://github.com/dsp-testing/qc-run2/pull/567 is merged, we can change the branch back to `main`.
+    const workflowRunId = await runRemoteQueriesApiRequest(credentials, 'better-errors', language, repositories, owner, repo, base64Pack, dryRun);
+    const queryStartTime = Date.now();
     const queryMetadata = await tryGetQueryMetadata(cliServer, queryFile);
 
     if (dryRun) {
@@ -435,7 +436,7 @@ async function buildRemoteQueryEntity(
   queryMetadata: QueryMetadata | undefined,
   controllerRepoOwner: string,
   controllerRepoName: string,
-  queryStartTime: Date,
+  queryStartTime: number,
   workflowRunId: number
 ): Promise<RemoteQuery> {
   // The query name is either the name as specified in the query metadata, or the file name.

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import * as Rdom from 'react-dom';
-import { ThemeProvider } from '@primer/react';
+import { Flash, ThemeProvider } from '@primer/react';
 import { ToRemoteQueriesMessage } from '../../pure/interface-types';
 import { AnalysisSummary, RemoteQueryResult } from '../shared/remote-query-result';
 
@@ -16,7 +16,7 @@ import DownloadButton from './DownloadButton';
 import { AnalysisResults } from '../shared/analysis-result';
 import DownloadSpinner from './DownloadSpinner';
 import CollapsibleItem from './CollapsibleItem';
-import { CodeSquareIcon, FileIcon, FileSymlinkFileIcon, RepoIcon } from '@primer/octicons-react';
+import { AlertIcon, CodeSquareIcon, FileCodeIcon, FileSymlinkFileIcon, RepoIcon } from '@primer/octicons-react';
 
 import MonacoEditor, { monaco } from 'react-monaco-editor';
 
@@ -32,7 +32,8 @@ const emptyQueryResult: RemoteQueryResult = {
   totalResultCount: 0,
   executionTimestamp: '',
   executionDuration: '',
-  analysisSummaries: []
+  analysisSummaries: [],
+  analysisFailures: [],
 };
 
 const downloadAnalysisResults = (analysisSummary: AnalysisSummary) => {
@@ -80,7 +81,7 @@ const QueryInfo = (queryResult: RemoteQueryResult) => (
     ({queryResult.executionDuration}), {queryResult.executionTimestamp}
     <VerticalSpace size={1} />
     <span className="vscode-codeql__query-file">
-      <FileIcon size={16} />
+      <FileCodeIcon size={16} />
       <a className="vscode-codeql__query-file-link" href="#" onClick={() => openQueryFile(queryResult)}>
         {queryResult.queryFileName}
       </a>
@@ -93,6 +94,31 @@ const QueryInfo = (queryResult: RemoteQueryResult) => (
     </span>
   </>
 );
+
+const Failures = (queryResult: RemoteQueryResult) => {
+  if (queryResult.analysisFailures.length === 0) {
+    return <></>;
+  }
+  return (
+    <>
+      <VerticalSpace size={3} />
+      <Flash variant="danger">
+        {queryResult.analysisFailures.map((f, i) => (
+          <>
+            <p className="vscode-codeql__analysis-failure" key={i}>
+              <AlertIcon size={16} />
+              <b>{f.nwo}: </b>
+              {f.error}
+            </p>
+            {
+              i === queryResult.analysisFailures.length - 1 ? <></> : <VerticalSpace size={1} />
+            }
+          </>
+        ))}
+      </Flash>
+    </>
+  );
+};
 
 const SummaryTitleWithResults = ({
   queryResult,
@@ -332,9 +358,10 @@ export function RemoteQueries(): JSX.Element {
 
   try {
     return <div>
-      <ThemeProvider>
+      <ThemeProvider colorMode="auto">
         <ViewTitle>{queryResult.queryTitle}</ViewTitle>
         <QueryInfo {...queryResult} />
+        <Failures {...queryResult} />
         <Summary queryResult={queryResult} analysesResults={analysesResults} />
         {showAnalysesResults && <AnalysesResults analysesResults={analysesResults} totalResults={queryResult.totalResultCount} />}
         <MonacoEditor

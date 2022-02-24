@@ -14,7 +14,7 @@ import { QueryEvaluationInfo, QueryWithResults } from '../../run-queries';
 import { QueryHistoryConfigListener } from '../../config';
 import * as messages from '../../pure/messages';
 import { QueryServerClient } from '../../queryserver-client';
-import { FullQueryInfo, InitialQueryInfo } from '../../query-results';
+import { LocalQueryInfo, InitialQueryInfo } from '../../query-results';
 import { DatabaseManager } from '../../databases';
 import * as tmp from 'tmp-promise';
 import { ONE_DAY_IN_MS, ONE_HOUR_IN_MS, TWO_HOURS_IN_MS, THREE_HOURS_IN_MS } from '../../pure/helpers-pure';
@@ -107,7 +107,7 @@ describe('query-history', () => {
     });
   });
 
-  let allHistory: FullQueryInfo[];
+  let allHistory: LocalQueryInfo[];
 
   beforeEach(() => {
     allHistory = [
@@ -207,15 +207,11 @@ describe('query-history', () => {
       expect(queryHistoryManager.treeDataProvider.getCurrent()).to.be.undefined;
     });
 
-    it('should throw if there is no selection', async () => {
+    it('should do nothing if there is no selection', async () => {
       queryHistoryManager = await createMockQueryHistory(allHistory);
-      try {
-        await queryHistoryManager.handleItemClicked(undefined!, []);
-        expect(true).to.be.false;
-      } catch (e) {
-        expect(selectedCallback).not.to.have.been.called;
-        expect(e.message).to.contain('No query selected');
-      }
+      await queryHistoryManager.handleItemClicked(undefined!, []);
+      expect(selectedCallback).not.to.have.been.called;
+      expect(queryHistoryManager.treeDataProvider.getCurrent()).to.be.undefined;
     });
   });
 
@@ -520,13 +516,14 @@ describe('query-history', () => {
         },
         completedQuery: {
           resultCount,
-        }
+        },
+        t: 'local'
       };
     }
   });
 
-  function createMockFullQueryInfo(dbName = 'a', queryWitbResults?: QueryWithResults, isFail = false): FullQueryInfo {
-    const fqi = new FullQueryInfo(
+  function createMockFullQueryInfo(dbName = 'a', queryWitbResults?: QueryWithResults, isFail = false): LocalQueryInfo {
+    const fqi = new LocalQueryInfo(
       {
         databaseInfo: { name: dbName },
         start: new Date(),
@@ -736,7 +733,7 @@ describe('query-history', () => {
     };
   }
 
-  async function createMockQueryHistory(allHistory: FullQueryInfo[]) {
+  async function createMockQueryHistory(allHistory: LocalQueryInfo[]) {
     const qhm = new QueryHistoryManager(
       {} as QueryServerClient,
       {} as DatabaseManager,
@@ -746,12 +743,12 @@ describe('query-history', () => {
         extensionPath: vscode.Uri.file('/x/y/z').fsPath,
       } as vscode.ExtensionContext,
       configListener,
-      selectedCallback,
       doCompareCallback
     );
+    qhm.onWillOpenQueryItem(selectedCallback);
     (qhm.treeDataProvider as any).history = [...allHistory];
     await vscode.workspace.saveAll();
-    qhm.refreshTreeView();
+    await qhm.refreshTreeView();
     return qhm;
   }
 });
