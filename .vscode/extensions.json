@@ -5,7 +5,8 @@
   "recommendations": [
     "amodio.tsl-problem-matcher",
     "dbaeumer.vscode-eslint",
-    "eternalphane.tsfmt-vscode"
+    "eternalphane.tsfmt-vscode",
+    "dbaeumer.vscode-eslint"
   ],
   // List of extensions recommended by VS Code that should not be recommended for users of this workspace.
   "unwantedRecommendations": []
