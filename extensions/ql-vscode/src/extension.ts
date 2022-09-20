@@ -494,7 +494,7 @@ async function activateWithInstalledDistribution(
   void logger.log('Reading query history');
   await qhm.readQueryHistory();
 
-  void logger.log('Initializing compare view.');
+  void logger.log('xxxxInitializing compare view.');
   const compareView = new CompareView(
     ctx,
     dbm,
