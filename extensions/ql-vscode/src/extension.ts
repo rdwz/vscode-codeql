@@ -115,6 +115,7 @@ import {
 } from './remote-queries/gh-api/variant-analysis';
 import { VariantAnalysisManager } from './remote-queries/variant-analysis-manager';
 import { createVariantAnalysisContentProvider } from './remote-queries/variant-analysis-content-provider';
+import { server } from './mocks/server';
 
 /**
  * extension.ts
@@ -966,6 +967,25 @@ async function activateWithInstalledDistribution(
   ctx.subscriptions.push(
     commandRunner('codeQL.exportVariantAnalysisResults', async (queryId?: string) => {
       await exportRemoteQueryResults(qhm, rqm, ctx, queryId);
+    })
+  );
+
+  ctx.subscriptions.push(
+    commandRunner('codeQL.charis', async () => {
+      server.listen();
+
+      const credentials = await Credentials.initialize(ctx);
+      const octokit = await credentials.getOctokit();
+
+      try {
+        const response = await octokit.request('GET /repos/dsp-testing/qc-controller');
+        void showAndLogInformationMessage('*** Response: ' + response.status);
+
+      } catch (error: any) {
+        void showAndLogInformationMessage('*** Error: ' + (error.status));
+      }
+
+      server.close();
     })
   );
 
