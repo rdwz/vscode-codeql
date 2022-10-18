@@ -115,6 +115,7 @@ import {
 } from './remote-queries/gh-api/variant-analysis';
 import { VariantAnalysisManager } from './remote-queries/variant-analysis-manager';
 import { createVariantAnalysisContentProvider } from './remote-queries/variant-analysis-content-provider';
+import * as nock from 'nock';
 
 /**
  * extension.ts
@@ -966,6 +967,25 @@ async function activateWithInstalledDistribution(
   ctx.subscriptions.push(
     commandRunner('codeQL.exportVariantAnalysisResults', async (queryId?: string) => {
       await exportRemoteQueryResults(qhm, rqm, ctx, queryId);
+    })
+  );
+
+  ctx.subscriptions.push(
+    commandRunner('codeQL.charis', async () => {
+      const credentials = await Credentials.initialize(ctx);
+      const octokit = await credentials.getOctokit();
+
+      nock('https://api.github.com')
+        .get('/repos/dsp-testing/qc-controller')
+        .reply(418, 'I\'m a teapot');
+
+      try {
+        const response = await octokit.request('GET /repos/dsp-testing/qc-controller');
+        void logger.log('************ Response: ' + response.status);
+
+      } catch (error: any) {
+        void logger.log('************ ' + error);
+      }
     })
   );
 
