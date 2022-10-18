@@ -115,7 +115,8 @@ import {
 } from './remote-queries/gh-api/variant-analysis';
 import { VariantAnalysisManager } from './remote-queries/variant-analysis-manager';
 import { createVariantAnalysisContentProvider } from './remote-queries/variant-analysis-content-provider';
-import { server } from './mocks/server';
+import { loadScenario, server } from './mocks/server';
+import { recordScenario } from './mocks/recorder';
 
 /**
  * extension.ts
@@ -970,22 +971,23 @@ async function activateWithInstalledDistribution(
     })
   );
 
+  const scenarioPath = '/Users/charisk/dev/github/vscode-codeql/extensions/ql-vscode/src/mocks/data/recorded';
+
   ctx.subscriptions.push(
-    commandRunner('codeQL.charis', async () => {
+    commandRunner('codeQL.charisListen', async () => {
       server.listen();
+    })
+  );
 
-      const credentials = await Credentials.initialize(ctx);
-      const octokit = await credentials.getOctokit();
+  ctx.subscriptions.push(
+    commandRunner('codeQL.charisRecord', async () => {
+      recordScenario(scenarioPath);
+    })
+  );
 
-      try {
-        const response = await octokit.request('GET /repos/dsp-testing/qc-controller');
-        void showAndLogInformationMessage('*** Response: ' + response.status);
-
-      } catch (error: any) {
-        void showAndLogInformationMessage('*** Error: ' + (error.status));
-      }
-
-      server.close();
+  ctx.subscriptions.push(
+    commandRunner('codeQL.charisLoadScenario', async () => {
+      loadScenario(scenarioPath);
     })
   );
 

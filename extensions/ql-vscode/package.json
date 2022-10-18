@@ -319,8 +319,16 @@
         "title": "CodeQL: Open Variant Analysis"
       },
       {
-        "command": "codeQL.charis",
-        "title": "CodeQL: Charis"
+        "command": "codeQL.charisListen",
+        "title": "CodeQL: charisListen"
+      },
+      {
+        "command": "codeQL.charisRecord",
+        "title": "CodeQL: charisRecord"
+      },
+      {
+        "command": "codeQL.charisLoadScenario",
+        "title": "CodeQL: charisLoadScenario"
       },
       {
         "command": "codeQL.runQueries",
@@ -907,7 +915,15 @@
           "when": "config.codeQL.canary"
         },
         {
-          "command": "codeQL.charis",
+          "command": "codeQL.charisListen",
+          "when": "config.codeQL.canary && config.codeQL.variantAnalysis.liveResults"
+        },
+        {
+          "command": "codeQL.charisRecord",
+          "when": "config.codeQL.canary && config.codeQL.variantAnalysis.liveResults"
+        },
+        {
+          "command": "codeQL.charisLoadScenario",
           "when": "config.codeQL.canary && config.codeQL.variantAnalysis.liveResults"
         },
         {
