@@ -58,6 +58,8 @@ export type ZipFileReference = {
 
 /** Encodes a reference to a source file within a zipped source archive into a single URI. */
 export function encodeSourceArchiveUri(ref: ZipFileReference): vscode.Uri {
+  // Creates a file path for VS Code to show the file as read-only.
+
   const { sourceArchiveZipPath, pathWithinSourceArchive } = ref;
 
   // These two paths are put into a single URI with a custom scheme.

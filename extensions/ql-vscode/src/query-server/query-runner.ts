@@ -51,6 +51,8 @@ export class NewQueryRunner extends QueryRunner {
     }
   }
   async registerDatabase(progress: ProgressCallback, token: CancellationToken, dbItem: DatabaseItem): Promise<void> {
+    // Q: Why do we need to register databases?
+
     if (dbItem.contents && (await this.qs.cliServer.cliConstraints.supportsDatabaseRegistration())) {
       const databases: string[] = [dbItem.databaseUri.fsPath];
       await this.qs.sendRequest(registerDatabases, { databases }, token, progress);

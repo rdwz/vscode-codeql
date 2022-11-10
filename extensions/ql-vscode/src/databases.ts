@@ -20,6 +20,12 @@ import { Logger, logger } from './logging';
 import { getErrorMessage } from './pure/helpers-pure';
 import { QueryRunner } from './queryRunner';
 
+// CodeQL Database:
+// - Dataset: CodeQL representation of the code (in folder called "default")
+//   - Schema
+// - Source: The actual source code (zip?)
+// - Metadata file: codeql-database.yml
+
 /**
  * databases.ts
  * ------------
@@ -49,6 +55,7 @@ export interface DatabaseOptions {
   language?: string;
 }
 
+// Q: Why do we have FullDatabaseOptions?
 export interface FullDatabaseOptions extends DatabaseOptions {
   ignoreSourceArchive: boolean;
   dateAdded: number | undefined;
@@ -66,6 +73,8 @@ interface PersistedDatabaseItem {
 export enum DatabaseKind {
   /** A CodeQL database */
   Database,
+
+  // Q: What is this? What is a dataset?
   /** A raw QL dataset */
   RawDataset
 }
@@ -94,6 +103,8 @@ class InvalidDatabaseError extends Error {
 
 
 async function findDataset(parentDirectory: string): Promise<vscode.Uri> {
+  // It looks like this is looking in a db folder to identify the dataset.
+
   /*
    * Look directly in the root
    */
@@ -149,6 +160,9 @@ async function resolveDatabase(
   databasePath: string,
 ): Promise<DatabaseContents> {
 
+  // Reads the file system, gets dataset and source archive
+  // and builds up DatabaseContents (excluding schemeUri).
+
   const name = path.basename(databasePath);
 
   // Look for dataset and source archive.
@@ -171,6 +185,8 @@ async function getDbSchemeFiles(dbDirectory: string): Promise<string[]> {
 async function resolveDatabaseContents(
   uri: vscode.Uri,
 ): Promise<DatabaseContents> {
+  // Builds up the whole DatabaseContents using the URI that is stored in workspace state.
+  // This inclues the dbSchemeUri.
   if (uri.scheme !== 'file') {
     throw new Error(`Database URI scheme '${uri.scheme}' not supported; only 'file' URIs are supported.`);
   }
@@ -515,6 +531,7 @@ export class DatabaseItemImpl implements DatabaseItem {
   }
 }
 
+// Q: Why are we using this? 
 /**
  * A promise that resolves to an event's result value when the event
  * `event` fires. If waiting for the event takes too long (by default
