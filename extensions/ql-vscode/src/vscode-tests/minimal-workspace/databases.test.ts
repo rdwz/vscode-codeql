@@ -9,7 +9,6 @@ import {
   DatabaseEventKind,
   DatabaseManager,
   DatabaseItemImpl,
-  DatabaseContents,
   FullDatabaseOptions,
   findSourceArchive
 } from '../../databases';
@@ -19,6 +18,7 @@ import { CodeQLCliServer } from '../../cli';
 import { encodeArchiveBasePath, encodeSourceArchiveUri } from '../../archive-filesystem-provider';
 import { testDisposeHandler } from '../test-dispose-handler';
 import { QueryRunner } from '../../queryRunner';
+import { DatabaseContents } from '../../databases/local/database-contents';
 
 describe('databases', () => {
 
