@@ -60,7 +60,7 @@ function getDatabaseWorkspaceFolderIndex(
 /**
  * Verifies that this database item has a zipped source folder. Returns an error message if it does not.
  */
-export function verifyZippedSources(
+function verifyZippedSources(
   dbName: string,
   sourceArchive: vscode.Uri | undefined,
 ): string | undefined {
