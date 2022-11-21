@@ -34,7 +34,7 @@ export async function findSourceArchive(
   return undefined;
 }
 
-export function uriBelongsToSourceArchiveExplorer(
+function uriBelongsToSourceArchiveExplorer(
   sourceArchive: vscode.Uri | undefined,
   uri: vscode.Uri,
 ): boolean {
@@ -164,4 +164,17 @@ function eventFired<T>(
       disposable.dispose();
     }
   });
+}
+
+export function deleteFolderFromWorkspace(
+  sourceArchive: vscode.Uri | undefined,
+): void {
+  // Delete folder from workspace, if it is still there
+  const folderIndex = (vscode.workspace.workspaceFolders || []).findIndex(
+    (folder) => uriBelongsToSourceArchiveExplorer(sourceArchive, folder.uri),
+  );
+  if (folderIndex >= 0) {
+    void logger.log(`Removing workspace folder at index ${folderIndex}`);
+    vscode.workspace.updateWorkspaceFolders(folderIndex, 1);
+  }
 }

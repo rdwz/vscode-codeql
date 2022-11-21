@@ -24,7 +24,7 @@ import { resolveDatabaseContents } from "./databases/local/database-contents-res
 import { DbLanguageResolver } from "./databases/local/db-language-resolver";
 import {
   addDatabaseSourceArchiveFolder,
-  uriBelongsToSourceArchiveExplorer,
+  deleteFolderFromWorkspace,
   verifyZippedSources,
 } from "./databases/local/source-archive";
 
@@ -688,15 +688,7 @@ export class DatabaseManager extends DisposableObject {
     }
     await this.updatePersistedDatabaseList();
 
-    // Delete folder from workspace, if it is still there
-    const folderIndex = (vscode.workspace.workspaceFolders || []).findIndex(
-      (folder) =>
-        uriBelongsToSourceArchiveExplorer(item.sourceArchive, folder.uri),
-    );
-    if (folderIndex >= 0) {
-      void logger.log(`Removing workspace folder at index ${folderIndex}`);
-      vscode.workspace.updateWorkspaceFolders(folderIndex, 1);
-    }
+    deleteFolderFromWorkspace(item.sourceArchive);
 
     // Remove this database item from the allow-list
     await this.deregisterDatabase(progress, token, item);
