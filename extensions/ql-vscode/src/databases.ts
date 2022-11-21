@@ -25,7 +25,6 @@ import { DbLanguageResolver } from "./databases/local/db-language-resolver";
 import {
   addDatabaseSourceArchiveFolder,
   deleteFolderFromWorkspace,
-  verifyZippedSources,
 } from "./databases/local/source-archive";
 
 /**
@@ -337,17 +336,6 @@ export class DatabaseItemImpl implements DatabaseItem {
 
   public get language() {
     return this.options.language || "";
-  }
-
-  /**
-   * Returns the root uri of the virtual filesystem for this database's source archive.
-   */
-  public getSourceArchiveExplorerUri(): vscode.Uri {
-    const sourceArchive = this.sourceArchive;
-    if (sourceArchive === undefined || !sourceArchive.fsPath.endsWith(".zip")) {
-      throw new Error(verifyZippedSources(this.name, sourceArchive));
-    }
-    return encodeArchiveBasePath(sourceArchive.fsPath);
   }
 
   /**
