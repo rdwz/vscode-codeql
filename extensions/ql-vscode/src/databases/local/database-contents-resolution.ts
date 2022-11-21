@@ -2,12 +2,9 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import * as glob from "glob-promise";
 import * as vscode from "vscode";
-import {
-  showAndLogInformationMessage,
-  showAndLogWarningMessage,
-} from "../../helpers";
-import { encodeArchiveBasePath } from "../../archive-filesystem-provider";
+import { showAndLogWarningMessage } from "../../helpers";
 import { DatabaseContents, DatabaseKind } from "./database-contents";
+import { findSourceArchive } from "./source-archive";
 
 /**
  * An error thrown when we cannot find a valid database in a putative
@@ -30,30 +27,6 @@ async function resolveDatabase(
     datasetUri,
     sourceArchiveUri,
   };
-}
-
-// exported for testing
-export async function findSourceArchive(
-  databasePath: string,
-): Promise<vscode.Uri | undefined> {
-  const relativePaths = ["src", "output/src_archive"];
-
-  for (const relativePath of relativePaths) {
-    const basePath = path.join(databasePath, relativePath);
-    const zipPath = basePath + ".zip";
-
-    // Prefer using a zip archive over a directory.
-    if (await fs.pathExists(zipPath)) {
-      return encodeArchiveBasePath(zipPath);
-    } else if (await fs.pathExists(basePath)) {
-      return vscode.Uri.file(basePath);
-    }
-  }
-
-  void showAndLogInformationMessage(
-    `Could not find source archive for database '${databasePath}'. Assuming paths are absolute.`,
-  );
-  return undefined;
 }
 
 async function findDataset(parentDirectory: string): Promise<vscode.Uri> {
