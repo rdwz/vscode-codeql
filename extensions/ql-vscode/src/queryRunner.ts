@@ -2,6 +2,7 @@ import { CancellationToken } from "vscode";
 import { CodeQLCliServer } from "./cli";
 import { ProgressCallback } from "./commandRunner";
 import { DatabaseItem } from "./databases";
+import { DatabaseContents } from "./databases/local/database-contents";
 import { InitialQueryInfo, LocalQueryInfo } from "./query-results";
 import { QueryWithResults } from "./run-queries-shared";
 
@@ -20,7 +21,8 @@ export abstract class QueryRunner {
     ) => Promise<void>,
   ): void;
   abstract clearCacheInDatabase(
-    dbItem: DatabaseItem,
+    dbContents: DatabaseContents | undefined,
+    dbPath: string,
     progress: ProgressCallback,
     token: CancellationToken,
   ): Promise<void>;
@@ -38,13 +40,15 @@ export abstract class QueryRunner {
   abstract deregisterDatabase(
     progress: ProgressCallback,
     token: CancellationToken,
-    dbItem: DatabaseItem,
+    dbContents: DatabaseContents | undefined,
+    dbPath: string,
   ): Promise<void>;
 
   abstract registerDatabase(
     progress: ProgressCallback,
     token: CancellationToken,
-    dbItem: DatabaseItem,
+    dbContents: DatabaseContents | undefined,
+    dbPath: string,
   ): Promise<void>;
 
   abstract upgradeDatabaseExplicit(

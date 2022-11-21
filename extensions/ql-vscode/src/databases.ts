@@ -9,7 +9,6 @@ import {
   isLikelyDatabaseRoot,
 } from "./helpers";
 import { ProgressCallback, withProgress } from "./commandRunner";
-import { ProgressCallback, withProgress } from "./commandRunner";
 import {
   zipArchiveScheme,
   encodeArchiveBasePath,
@@ -822,14 +821,24 @@ export class DatabaseManager extends DisposableObject {
     token: vscode.CancellationToken,
     dbItem: DatabaseItem,
   ) {
-    await this.qs.deregisterDatabase(progress, token, dbItem);
+    await this.qs.deregisterDatabase(
+      progress,
+      token,
+      dbItem.contents,
+      dbItem.databaseUri.fsPath,
+    );
   }
   private async registerDatabase(
     progress: ProgressCallback,
     token: vscode.CancellationToken,
     dbItem: DatabaseItem,
   ) {
-    await this.qs.registerDatabase(progress, token, dbItem);
+    await this.qs.registerDatabase(
+      progress,
+      token,
+      dbItem.contents,
+      dbItem.databaseUri.fsPath,
+    );
   }
 
   private updatePersistedCurrentDatabaseItem(): void {

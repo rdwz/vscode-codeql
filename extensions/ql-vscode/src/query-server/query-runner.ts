@@ -16,6 +16,8 @@ import { QueryServerClient } from "./queryserver-client";
 import { compileAndRunQueryAgainstDatabase } from "./run-queries";
 import * as vscode from "vscode";
 import { getOnDiskWorkspaceFolders } from "../helpers";
+import { DatabaseContents } from "../databases/local/database-contents";
+
 export class NewQueryRunner extends QueryRunner {
   constructor(public readonly qs: QueryServerClient) {
     super();
@@ -42,18 +44,18 @@ export class NewQueryRunner extends QueryRunner {
   }
 
   async clearCacheInDatabase(
-    dbItem: DatabaseItem,
+    dbContents: DatabaseContents | undefined,
+    dbPath: string,
     progress: ProgressCallback,
     token: CancellationToken,
   ): Promise<void> {
-    if (dbItem.contents === undefined) {
+    if (dbContents === undefined) {
       throw new Error("Can't clear the cache in an invalid database.");
     }
 
-    const db = dbItem.databaseUri.fsPath;
     const params: ClearCacheParams = {
       dryRun: false,
-      db,
+      db: dbPath,
     };
     await this.qs.sendRequest(clearCache, params, token, progress);
   }
@@ -82,13 +84,14 @@ export class NewQueryRunner extends QueryRunner {
   async deregisterDatabase(
     progress: ProgressCallback,
     token: CancellationToken,
-    dbItem: DatabaseItem,
+    dbContents: DatabaseContents | undefined,
+    dbPath: string,
   ): Promise<void> {
     if (
-      dbItem.contents &&
+      dbContents &&
       (await this.qs.cliServer.cliConstraints.supportsDatabaseRegistration())
     ) {
-      const databases: string[] = [dbItem.databaseUri.fsPath];
+      const databases: string[] = [dbPath];
       await this.qs.sendRequest(
         deregisterDatabases,
         { databases },
@@ -100,13 +103,14 @@ export class NewQueryRunner extends QueryRunner {
   async registerDatabase(
     progress: ProgressCallback,
     token: CancellationToken,
-    dbItem: DatabaseItem,
+    dbContents: DatabaseContents | undefined,
+    dbPath: string,
   ): Promise<void> {
     if (
-      dbItem.contents &&
+      dbContents &&
       (await this.qs.cliServer.cliConstraints.supportsDatabaseRegistration())
     ) {
-      const databases: string[] = [dbItem.databaseUri.fsPath];
+      const databases: string[] = [dbPath];
       await this.qs.sendRequest(
         registerDatabases,
         { databases },

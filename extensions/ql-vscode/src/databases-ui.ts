@@ -591,7 +591,8 @@ export class DatabaseUI extends DisposableObject {
       this.databaseManager.currentDatabaseItem !== undefined
     ) {
       await this.queryServer.clearCacheInDatabase(
-        this.databaseManager.currentDatabaseItem,
+        this.databaseManager.currentDatabaseItem.contents,
+        this.databaseManager.currentDatabaseItem.databaseUri.fsPath,
         progress,
         token,
       );

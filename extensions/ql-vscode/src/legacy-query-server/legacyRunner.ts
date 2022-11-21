@@ -1,6 +1,7 @@
 import { CancellationToken } from "vscode";
 import { ProgressCallback } from "../commandRunner";
 import { DatabaseItem } from "../databases";
+import { DatabaseContents } from "../databases/local/database-contents";
 import {
   Dataset,
   deregisterDatabases,
@@ -41,11 +42,12 @@ export class LegacyQueryRunner extends QueryRunner {
     this.qs.onDidStartQueryServer(callBack);
   }
   async clearCacheInDatabase(
-    dbItem: DatabaseItem,
+    dbContents: DatabaseContents | undefined,
+    _dbPath: string,
     progress: ProgressCallback,
     token: CancellationToken,
   ): Promise<void> {
-    await clearCacheInDatabase(this.qs, dbItem, progress, token);
+    await clearCacheInDatabase(this.qs, dbContents, progress, token);
   }
   async compileAndRunQueryAgainstDatabase(
     dbItem: DatabaseItem,
@@ -72,15 +74,15 @@ export class LegacyQueryRunner extends QueryRunner {
   async deregisterDatabase(
     progress: ProgressCallback,
     token: CancellationToken,
-    dbItem: DatabaseItem,
+    dbContents: DatabaseContents | undefined,
   ): Promise<void> {
     if (
-      dbItem.contents &&
+      dbContents &&
       (await this.qs.cliServer.cliConstraints.supportsDatabaseRegistration())
     ) {
       const databases: Dataset[] = [
         {
-          dbDir: dbItem.contents.datasetUri.fsPath,
+          dbDir: dbContents.datasetUri.fsPath,
           workingSet: "default",
         },
       ];
@@ -95,15 +97,15 @@ export class LegacyQueryRunner extends QueryRunner {
   async registerDatabase(
     progress: ProgressCallback,
     token: CancellationToken,
-    dbItem: DatabaseItem,
+    dbContents: DatabaseContents | undefined,
   ): Promise<void> {
     if (
-      dbItem.contents &&
+      dbContents &&
       (await this.qs.cliServer.cliConstraints.supportsDatabaseRegistration())
     ) {
       const databases: Dataset[] = [
         {
-          dbDir: dbItem.contents.datasetUri.fsPath,
+          dbDir: dbContents.datasetUri.fsPath,
           workingSet: "default",
         },
       ];

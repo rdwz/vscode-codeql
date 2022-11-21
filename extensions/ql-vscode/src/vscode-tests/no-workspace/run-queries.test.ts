@@ -243,7 +243,7 @@ describe("run-queries", () => {
       await runner.registerDatabase(
         mockProgress as any,
         mockCancel as any,
-        dbItem,
+        dbItem.contents,
       );
 
       expect(qs.sendRequest).to.have.been.calledOnceWith(
@@ -281,7 +281,7 @@ describe("run-queries", () => {
       await runner.deregisterDatabase(
         mockProgress as any,
         mockCancel as any,
-        dbItem,
+        dbItem.contents,
       );
 
       expect(qs.sendRequest).to.have.been.calledOnceWith(
@@ -318,7 +318,7 @@ describe("run-queries", () => {
       await runner.registerDatabase(
         mockProgress as any,
         mockCancel as any,
-        dbItem,
+        dbItem.contents,
       );
       expect(qs.sendRequest).not.to.have.been.called;
     });
@@ -342,7 +342,7 @@ describe("run-queries", () => {
       await runner.registerDatabase(
         mockProgress as any,
         mockCancel as any,
-        dbItem,
+        dbItem.contents,
       );
       expect(qs.sendRequest).not.to.have.been.called;
     });

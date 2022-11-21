@@ -26,6 +26,7 @@ import {
   upgradeDatabaseExplicit,
 } from "./upgrades";
 import { QueryEvaluationInfo, QueryWithResults } from "../run-queries-shared";
+import { DatabaseContents } from "../databases/local/database-contents";
 
 /**
  * A collection of evaluation-time information about a query,
@@ -212,16 +213,16 @@ export class QueryInProgress {
 
 export async function clearCacheInDatabase(
   qs: qsClient.QueryServerClient,
-  dbItem: DatabaseItem,
+  dbContents: DatabaseContents | undefined,
   progress: ProgressCallback,
   token: CancellationToken,
 ): Promise<messages.ClearCacheResult> {
-  if (dbItem.contents === undefined) {
+  if (dbContents === undefined) {
     throw new Error("Can't clear the cache in an invalid database.");
   }
 
   const db: messages.Dataset = {
-    dbDir: dbItem.contents.datasetUri.fsPath,
+    dbDir: dbContents.datasetUri.fsPath,
     workingSet: "default",
   };
 
