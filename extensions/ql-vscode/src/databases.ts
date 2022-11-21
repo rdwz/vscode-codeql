@@ -21,6 +21,7 @@ import { getErrorMessage } from "./pure/helpers-pure";
 import { QueryRunner } from "./queryRunner";
 import { DatabaseContents } from "./databases/local/database-contents";
 import { resolveDatabaseContents } from "./databases/local/database-contents-resolution";
+import { DbLanguageResolver } from "./databases/local/db-language-resolver";
 
 /**
  * databases.ts
@@ -450,14 +451,17 @@ export class DatabaseManager extends DisposableObject {
   private readonly _databaseItems: DatabaseItem[] = [];
   private _currentDatabaseItem: DatabaseItem | undefined = undefined;
 
+  private readonly dbLanguageResolver: DbLanguageResolver;
+
   constructor(
     private readonly ctx: ExtensionContext,
     private readonly qs: QueryRunner,
-    private readonly cli: cli.CodeQLCliServer,
+    cli: cli.CodeQLCliServer,
     public logger: Logger,
   ) {
     super();
 
+    this.dbLanguageResolver = new DbLanguageResolver(cli);
     qs.onStart(this.reregisterDatabases.bind(this));
   }
 
@@ -475,7 +479,9 @@ export class DatabaseManager extends DisposableObject {
       // If a displayName is not passed in, the basename of folder containing the database is used.
       displayName,
       dateAdded: Date.now(),
-      language: await this.getPrimaryLanguage(uri.fsPath),
+      language: await this.dbLanguageResolver.resolvePrimaryLanguage(
+        uri.fsPath,
+      ),
     };
     const databaseItem = new DatabaseItemImpl(
       uri,
@@ -580,7 +586,9 @@ export class DatabaseManager extends DisposableObject {
     const dbBaseUri = vscode.Uri.parse(state.uri, true);
     if (language === undefined) {
       // we haven't been successful yet at getting the language. try again
-      language = await this.getPrimaryLanguage(dbBaseUri.fsPath);
+      language = await this.dbLanguageResolver.resolvePrimaryLanguage(
+        dbBaseUri.fsPath,
+      );
     }
 
     const fullOptions: FullDatabaseOptions = {
@@ -866,17 +874,6 @@ export class DatabaseManager extends DisposableObject {
       return uri.fsPath.startsWith(vscode.Uri.file(storagePath).fsPath);
     }
     return false;
-  }
-
-  private async getPrimaryLanguage(dbPath: string) {
-    if (!(await this.cli.cliConstraints.supportsLanguageName())) {
-      // return undefined so that we recalculate on restart until the cli is at a version that
-      // supports this feature. This recalculation is cheap since we avoid calling into the cli
-      // unless we know it can return the langauges property.
-      return undefined;
-    }
-    const dbInfo = await this.cli.resolveDatabase(dbPath);
-    return dbInfo.languages?.[0] || "";
   }
 }
 
