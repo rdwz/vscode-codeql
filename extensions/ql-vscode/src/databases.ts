@@ -22,6 +22,11 @@ import { QueryRunner } from "./queryRunner";
 import { DatabaseContents } from "./databases/local/database-contents";
 import { resolveDatabaseContents } from "./databases/local/database-contents-resolution";
 import { DbLanguageResolver } from "./databases/local/db-language-resolver";
+import {
+  addDatabaseSourceArchiveFolder,
+  uriBelongsToSourceArchiveExplorer,
+  verifyZippedSources,
+} from "./databases/local/source-archive";
 
 /**
  * databases.ts
@@ -143,17 +148,6 @@ export interface DatabaseItem {
   getDatasetFolder(server: cli.CodeQLCliServer): Promise<string>;
 
   /**
-   * Returns the root uri of the virtual filesystem for this database's source archive,
-   * as displayed in the filesystem explorer.
-   */
-  getSourceArchiveExplorerUri(): vscode.Uri;
-
-  /**
-   * Holds if `uri` belongs to this database's source archive.
-   */
-  belongsToSourceArchiveExplorerUri(uri: vscode.Uri): boolean;
-
-  /**
    * Whether the database may be affected by test execution for the given path.
    */
   isAffectedByTest(testPath: string): Promise<boolean>;
@@ -162,11 +156,6 @@ export interface DatabaseItem {
    * Gets the state of this database, to be persisted in the workspace state.
    */
   getPersistedState(): PersistedDatabaseItem;
-
-  /**
-   * Verifies that this database item has a zipped source folder. Returns an error message if it does not.
-   */
-  verifyZippedSources(): string | undefined;
 }
 
 export enum DatabaseEventKind {
@@ -356,21 +345,9 @@ export class DatabaseItemImpl implements DatabaseItem {
   public getSourceArchiveExplorerUri(): vscode.Uri {
     const sourceArchive = this.sourceArchive;
     if (sourceArchive === undefined || !sourceArchive.fsPath.endsWith(".zip")) {
-      throw new Error(this.verifyZippedSources());
+      throw new Error(verifyZippedSources(this.name, sourceArchive));
     }
     return encodeArchiveBasePath(sourceArchive.fsPath);
-  }
-
-  public verifyZippedSources(): string | undefined {
-    const sourceArchive = this.sourceArchive;
-    if (sourceArchive === undefined) {
-      return `${this.name} has no source archive.`;
-    }
-
-    if (!sourceArchive.fsPath.endsWith(".zip")) {
-      return `${this.name} has a source folder that is unzipped.`;
-    }
-    return;
   }
 
   /**
@@ -405,34 +382,6 @@ export class DatabaseItemImpl implements DatabaseItem {
       return false;
     }
   }
-}
-
-/**
- * A promise that resolves to an event's result value when the event
- * `event` fires. If waiting for the event takes too long (by default
- * >1000ms) log a warning, and resolve to undefined.
- */
-function eventFired<T>(
-  event: vscode.Event<T>,
-  timeoutMs = 1000,
-): Promise<T | undefined> {
-  return new Promise((res, _rej) => {
-    const timeout = setTimeout(() => {
-      void logger.log(
-        `Waiting for event ${event} timed out after ${timeoutMs}ms`,
-      );
-      res(undefined);
-      dispose();
-    }, timeoutMs);
-    const disposable = event((e) => {
-      res(e);
-      dispose();
-    });
-    function dispose() {
-      clearTimeout(timeout);
-      disposable.dispose();
-    }
-  });
 }
 
 export class DatabaseManager extends DisposableObject {
@@ -493,7 +442,10 @@ export class DatabaseManager extends DisposableObject {
     );
 
     await this.addDatabaseItem(progress, token, databaseItem);
-    await this.addDatabaseSourceArchiveFolder(databaseItem);
+    await addDatabaseSourceArchiveFolder(
+      databaseItem.name,
+      databaseItem.sourceArchive,
+    );
 
     return databaseItem;
   }
@@ -514,51 +466,6 @@ export class DatabaseManager extends DisposableObject {
         });
       }),
     );
-  }
-
-  public async addDatabaseSourceArchiveFolder(item: DatabaseItem) {
-    // The folder may already be in workspace state from a previous
-    // session. If not, add it.
-    const index = this.getDatabaseWorkspaceFolderIndex(item);
-    if (index === -1) {
-      // Add that filesystem as a folder to the current workspace.
-      //
-      // It's important that we add workspace folders to the end,
-      // rather than beginning of the list, because the first
-      // workspace folder is special; if it gets updated, the entire
-      // extension host is restarted. (cf.
-      // https://github.com/microsoft/vscode/blob/e0d2ed907d1b22808c56127678fb436d604586a7/src/vs/workbench/contrib/relauncher/browser/relauncher.contribution.ts#L209-L214)
-      //
-      // This is undesirable, as we might be adding and removing many
-      // workspace folders as the user adds and removes databases.
-      const end = (vscode.workspace.workspaceFolders || []).length;
-
-      const msg = item.verifyZippedSources();
-      if (msg) {
-        void logger.log(`Could not add source folder because ${msg}`);
-        return;
-      }
-
-      const uri = item.getSourceArchiveExplorerUri();
-      void logger.log(
-        `Adding workspace folder for ${item.name} source archive at index ${end}`,
-      );
-      if ((vscode.workspace.workspaceFolders || []).length < 2) {
-        // Adding this workspace folder makes the workspace
-        // multi-root, which may surprise the user. Let them know
-        // we're doing this.
-        void vscode.window.showInformationMessage(
-          `Adding workspace folder for source archive of database ${item.name}.`,
-        );
-      }
-      vscode.workspace.updateWorkspaceFolders(end, 0, {
-        name: `[${item.name} source archive]`,
-        uri,
-      });
-      // vscode api documentation says we must to wait for this event
-      // between multiple `updateWorkspaceFolders` calls.
-      await eventFired(vscode.workspace.onDidChangeWorkspaceFolders);
-    }
   }
 
   private async createDatabaseItemFromPersistedState(
@@ -713,16 +620,6 @@ export class DatabaseManager extends DisposableObject {
     }
   }
 
-  /**
-   * Returns the index of the workspace folder that corresponds to the source archive of `item`
-   * if there is one, and -1 otherwise.
-   */
-  private getDatabaseWorkspaceFolderIndex(item: DatabaseItem): number {
-    return (vscode.workspace.workspaceFolders || []).findIndex((folder) =>
-      item.belongsToSourceArchiveExplorerUri(folder.uri),
-    );
-  }
-
   public findDatabaseItem(uri: vscode.Uri): DatabaseItem | undefined {
     const uriString = uri.toString(true);
     return this._databaseItems.find(
@@ -793,7 +690,8 @@ export class DatabaseManager extends DisposableObject {
 
     // Delete folder from workspace, if it is still there
     const folderIndex = (vscode.workspace.workspaceFolders || []).findIndex(
-      (folder) => item.belongsToSourceArchiveExplorerUri(folder.uri),
+      (folder) =>
+        uriBelongsToSourceArchiveExplorer(item.sourceArchive, folder.uri),
     );
     if (folderIndex >= 0) {
       void logger.log(`Removing workspace folder at index ${folderIndex}`);

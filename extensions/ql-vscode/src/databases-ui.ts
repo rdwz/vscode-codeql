@@ -39,6 +39,7 @@ import { asyncFilter, getErrorMessage } from "./pure/helpers-pure";
 import { Credentials } from "./authentication";
 import { QueryRunner } from "./queryRunner";
 import { isCanary } from "./config";
+import { addDatabaseSourceArchiveFolder } from "./databases/local/source-archive";
 
 type ThemableIconPath = { light: string; dark: string } | string;
 
@@ -689,10 +690,13 @@ export class DatabaseUI extends DisposableObject {
   ): Promise<void> => {
     if (multiSelect?.length) {
       for (const dbItem of multiSelect) {
-        await this.databaseManager.addDatabaseSourceArchiveFolder(dbItem);
+        await addDatabaseSourceArchiveFolder(dbItem.name, dbItem.sourceArchive);
       }
     } else {
-      await this.databaseManager.addDatabaseSourceArchiveFolder(databaseItem);
+      await addDatabaseSourceArchiveFolder(
+        databaseItem.name,
+        databaseItem.sourceArchive,
+      );
     }
   };
 
