@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
 /**
  * The layout of the database.
@@ -7,7 +7,7 @@ export enum DatabaseKind {
   /** A CodeQL database */
   Database,
   /** A raw QL dataset */
-  RawDataset
+  RawDataset,
 }
 
 export interface DatabaseContents {
@@ -24,4 +24,3 @@ export interface DatabaseContents {
   /** The URI of the CodeQL database scheme within the database, if exactly one exists. */
   dbSchemeUri?: vscode.Uri;
 }
-

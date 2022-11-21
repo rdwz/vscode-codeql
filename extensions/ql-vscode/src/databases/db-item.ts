@@ -1,16 +1,35 @@
 // This file contains models that are used to represent the databases.
 
 export enum DbItemKind {
-  RootLocal = 'RootLocal',
-  RootRemote = 'RootRemote',
-  RemoteSystemDefinedList = 'RemoteSystemDefinedList',
-  RemoteUserDefinedList = 'RemoteUserDefinedList',
-  RemoteOwner = 'RemoteOwner',
-  RemoteRepo = 'RemoteRepo'
+  RootLocal = "RootLocal",
+  LocalList = "LocalList",
+  LocalDatabase = "LocalDatabase",
+  RootRemote = "RootRemote",
+  RemoteSystemDefinedList = "RemoteSystemDefinedList",
+  RemoteUserDefinedList = "RemoteUserDefinedList",
+  RemoteOwner = "RemoteOwner",
+  RemoteRepo = "RemoteRepo",
 }
 
 export interface RootLocalDbItem {
   kind: DbItemKind.RootLocal;
+  children: LocalDbItem[];
+}
+
+export type LocalDbItem = LocalListDbItem | LocalDatabaseDbItem;
+
+export interface LocalListDbItem {
+  kind: DbItemKind.LocalList;
+  listName: string;
+  databases: LocalDatabaseDbItem[];
+}
+
+export interface LocalDatabaseDbItem {
+  kind: DbItemKind.LocalDatabase;
+  databaseName: string;
+  dateAdded: number;
+  language: string;
+  storagePath: string;
 }
 
 export interface RootRemoteDbItem {
@@ -22,6 +41,7 @@ export type DbItem =
   | RootLocalDbItem
   | RootRemoteDbItem
   | RemoteDbItem
+  | LocalDbItem;
 
 export type RemoteDbItem =
   | RemoteSystemDefinedListDbItem
