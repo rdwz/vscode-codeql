@@ -2,6 +2,8 @@
 
 ## [UNRELEASED]
 
+- Remove support for CodeQL CLI versions older than 2.7.6. [#1788](https://github.com/github/vscode-codeql/pull/1788)
+
 ## 1.7.6 - 21 November 2022
 
 - Warn users when their VS Code version is too old to support all features in the vscode-codeql extension. [#1674](https://github.com/github/vscode-codeql/pull/1674)
