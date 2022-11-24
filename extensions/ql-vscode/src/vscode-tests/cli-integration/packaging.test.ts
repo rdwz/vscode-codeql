@@ -4,7 +4,7 @@ import * as path from "path";
 
 import * as pq from "proxyquire";
 
-import { CliVersionConstraint, CodeQLCliServer } from "../../cli";
+import { CodeQLCliServer } from "../../cli";
 import { CodeQLExtensionInterface } from "../../extension";
 import { expect } from "chai";
 import { getErrorMessage } from "../../pure/helpers-pure";
@@ -50,12 +50,6 @@ describe("Packaging commands", function () {
       throw new Error(
         "Extension not initialized. Make sure cli is downloaded and installed properly.",
       );
-    }
-    if (!(await cli.cliConstraints.supportsPackaging())) {
-      console.log(
-        `Packaging commands are not supported on CodeQL CLI v${CliVersionConstraint.CLI_VERSION_WITH_PACKAGING}. Skipping this test.`,
-      );
-      this.skip();
     }
   });
 

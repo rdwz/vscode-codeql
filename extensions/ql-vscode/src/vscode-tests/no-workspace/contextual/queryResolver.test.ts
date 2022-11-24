@@ -48,35 +48,6 @@ describe("queryResolver", () => {
       ]);
     });
 
-    it("should resolve a query from the queries pack if this is an old CLI", async () => {
-      // pretend this is an older CLI
-      (
-        mockCli.cliConstraints as any
-      ).supportsAllowLibraryPacksInResolveQueries.returns(false);
-      mockCli.resolveQueriesInSuite.returns(["a", "b"]);
-      const result = await module.resolveQueries(
-        mockCli,
-        {
-          dbschemePackIsLibraryPack: true,
-          dbschemePack: "my-qlpack",
-          queryPack: "my-qlpack2",
-        },
-        KeyType.DefinitionQuery,
-      );
-      expect(result).to.deep.equal(["a", "b"]);
-      expect(writeFileSpy.getCall(0).args[0]).to.match(/.qls$/);
-      expect(yaml.load(writeFileSpy.getCall(0).args[1])).to.deep.equal([
-        {
-          from: "my-qlpack2",
-          queries: ".",
-          include: {
-            kind: "definitions",
-            "tags contain": "ide-contextual-queries/local-definitions",
-          },
-        },
-      ]);
-    });
-
     it("should throw an error when there are no queries found", async () => {
       mockCli.resolveQueriesInSuite.returns([]);
 

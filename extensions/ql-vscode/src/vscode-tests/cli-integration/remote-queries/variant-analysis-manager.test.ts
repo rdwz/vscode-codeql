@@ -23,7 +23,7 @@ import * as fs from "fs-extra";
 import * as path from "path";
 
 import { VariantAnalysisManager } from "../../../remote-queries/variant-analysis-manager";
-import { CliVersionConstraint, CodeQLCliServer } from "../../../cli";
+import { CodeQLCliServer } from "../../../cli";
 import {
   fixWorkspaceReferences,
   restoreWorkspaceReferences,
@@ -140,13 +140,6 @@ describe("Variant Analysis Manager", async function () {
     }
 
     beforeEach(async function () {
-      if (!(await cli.cliConstraints.supportsRemoteQueries())) {
-        console.log(
-          `Remote queries are not supported on CodeQL CLI v${CliVersionConstraint.CLI_VERSION_REMOTE_QUERIES}. Skipping this test.`,
-        );
-        this.skip();
-      }
-
       writeFileStub.callThrough();
 
       progress = sandbox.spy();

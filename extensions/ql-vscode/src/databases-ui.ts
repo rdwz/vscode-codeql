@@ -504,13 +504,6 @@ export class DatabaseUI extends DisposableObject {
     );
   };
 
-  async tryUpgradeCurrentDatabase(
-    progress: ProgressCallback,
-    token: CancellationToken,
-  ) {
-    await this.handleUpgradeCurrentDatabase(progress, token);
-  }
-
   private handleSortByName = async () => {
     if (this.treeDataProvider.sortOrder === SortOrder.NameAsc) {
       this.treeDataProvider.sortOrder = SortOrder.NameDesc;

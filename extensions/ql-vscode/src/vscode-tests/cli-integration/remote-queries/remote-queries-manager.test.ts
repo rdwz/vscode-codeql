@@ -14,7 +14,7 @@ import * as os from "os";
 import * as yaml from "js-yaml";
 
 import { QlPack } from "../../../remote-queries/run-remote-query";
-import { CliVersionConstraint, CodeQLCliServer } from "../../../cli";
+import { CodeQLCliServer } from "../../../cli";
 import { CodeQLExtensionInterface } from "../../../extension";
 import {
   setRemoteControllerRepo,
@@ -79,13 +79,6 @@ describe("Remote queries", function () {
     }
 
     ctx = createMockExtensionContext();
-
-    if (!(await cli.cliConstraints.supportsRemoteQueries())) {
-      console.log(
-        `Remote queries are not supported on CodeQL CLI v${CliVersionConstraint.CLI_VERSION_REMOTE_QUERIES}. Skipping this test.`,
-      );
-      this.skip();
-    }
 
     logger = new OutputChannelLogger("test-logger");
     remoteQueriesManager = new RemoteQueriesManager(

@@ -166,16 +166,14 @@ describe("using the legacy query server", function () {
     const parsedResults = new Checkpoint<void>();
 
     it("should register the database if necessary", async () => {
-      if (await cliServer.cliConstraints.supportsDatabaseRegistration()) {
-        await qs.sendRequest(
-          messages.registerDatabases,
-          { databases: [db] },
-          token,
-          (() => {
-            /**/
-          }) as any,
-        );
-      }
+      await qs.sendRequest(
+        messages.registerDatabases,
+        { databases: [db] },
+        token,
+        (() => {
+          /**/
+        }) as any,
+      );
     });
 
     it(`should be able to compile query ${queryName}`, async function () {
