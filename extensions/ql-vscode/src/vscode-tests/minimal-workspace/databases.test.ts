@@ -36,8 +36,6 @@ describe("databases", () => {
   let dbChangedHandler: sinon.SinonSpy;
   let registerSpy: sinon.SinonSpy;
   let deregisterSpy: sinon.SinonSpy;
-  let supportsDatabaseRegistrationSpy: sinon.SinonStub;
-  let supportsLanguageNameSpy: sinon.SinonStub;
   let resolveDatabaseSpy: sinon.SinonStub;
 
   let sandbox: sinon.SinonSandbox;
@@ -53,9 +51,6 @@ describe("databases", () => {
     registerSpy = sandbox.stub();
     deregisterSpy = sandbox.stub();
     dbChangedHandler = sandbox.spy();
-    supportsDatabaseRegistrationSpy = sandbox.stub();
-    supportsDatabaseRegistrationSpy.resolves(true);
-    supportsLanguageNameSpy = sandbox.stub();
     resolveDatabaseSpy = sandbox.stub();
     databaseManager = new DatabaseManager(
       {
@@ -75,10 +70,6 @@ describe("databases", () => {
         },
       } as unknown as QueryRunner,
       {
-        cliConstraints: {
-          supportsLanguageName: supportsLanguageNameSpy,
-          supportsDatabaseRegistration: supportsDatabaseRegistrationSpy,
-        },
         resolveDatabase: resolveDatabaseSpy,
       } as unknown as CodeQLCliServer,
       {
@@ -395,15 +386,7 @@ describe("databases", () => {
     });
   });
 
-  it("should not support the primary language", async () => {
-    supportsLanguageNameSpy.resolves(false);
-
-    const result = await (databaseManager as any).getPrimaryLanguage("hucairz");
-    expect(result).to.be.undefined;
-  });
-
   it("should get the primary language", async () => {
-    supportsLanguageNameSpy.resolves(true);
     resolveDatabaseSpy.resolves({
       languages: ["python"],
     });
@@ -412,7 +395,6 @@ describe("databases", () => {
   });
 
   it("should handle missing the primary language", async () => {
-    supportsLanguageNameSpy.resolves(true);
     resolveDatabaseSpy.resolves({
       languages: [],
     });

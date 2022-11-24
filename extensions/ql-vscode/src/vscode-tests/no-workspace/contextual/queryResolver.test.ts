@@ -19,9 +19,6 @@ describe("queryResolver", () => {
   beforeEach(() => {
     mockCli = {
       resolveQueriesInSuite: sinon.stub(),
-      cliConstraints: {
-        supportsAllowLibraryPacksInResolveQueries: sinon.stub().returns(true),
-      },
     };
     module = createModule();
   });
