@@ -28,6 +28,8 @@ export class DbTreeViewItem extends vscode.TreeItem {
     public readonly children: DbTreeViewItem[],
   ) {
     super(label, collapsibleState);
+
+    this.resourceUri = vscode.Uri.parse("https://charis.is.an.idiot/bob");
   }
 }
 
