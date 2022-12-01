@@ -307,6 +307,7 @@ describe("db panel", () => {
         dateAdded: 1668428293677,
         language: "cpp",
         storagePath: "/path/to/db1/",
+        selected: false,
       },
       {
         kind: DbItemKind.LocalDatabase,
@@ -314,6 +315,7 @@ describe("db panel", () => {
         dateAdded: 1668428472731,
         language: "cpp",
         storagePath: "/path/to/db2/",
+        selected: false,
       },
     ]);
     checkLocalListItem(localListItems[1], "my-list-2", [
@@ -323,6 +325,7 @@ describe("db panel", () => {
         dateAdded: 1668428472731,
         language: "ruby",
         storagePath: "/path/to/db3/",
+        selected: false,
       },
     ]);
   });
@@ -381,6 +384,7 @@ describe("db panel", () => {
       dateAdded: 1668428293677,
       language: "csharp",
       storagePath: "/path/to/db1/",
+      selected: false,
     });
     checkLocalDatabaseItem(localDatabaseItems[1], {
       kind: DbItemKind.LocalDatabase,
@@ -388,6 +392,7 @@ describe("db panel", () => {
       dateAdded: 1668428472731,
       language: "go",
       storagePath: "/path/to/db2/",
+      selected: false,
     });
   });
 
