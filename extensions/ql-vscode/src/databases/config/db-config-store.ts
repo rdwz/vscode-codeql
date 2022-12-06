@@ -1,6 +1,11 @@
 import { pathExists, writeJSON, readJSON, readJSONSync } from "fs-extra";
 import { join } from "path";
-import { cloneDbConfig, DbConfig, SelectedDbItem } from "./db-config";
+import {
+  cloneDbConfig,
+  DbConfig,
+  ExpandedDbItem,
+  SelectedDbItem,
+} from "./db-config";
 import * as chokidar from "chokidar";
 import { DisposableObject, DisposeHandler } from "../../pure/disposable-object";
 import { DbConfigValidator } from "./db-config-validator";
@@ -67,6 +72,19 @@ export class DbConfigStore extends DisposableObject {
     const config: DbConfig = {
       ...this.config,
       selected: dbItem,
+    };
+
+    await this.writeConfig(config);
+  }
+
+  public async updateExpandedState(expandedItems: ExpandedDbItem[]) {
+    if (!this.config) {
+      throw Error("Cannot update expansion state if config is not loaded");
+    }
+
+    const config: DbConfig = {
+      ...this.config,
+      expanded: expandedItems,
     };
 
     await this.writeConfig(config);
