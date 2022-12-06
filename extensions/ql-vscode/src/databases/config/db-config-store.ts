@@ -137,6 +137,7 @@ export class DbConfigStore extends DisposableObject {
           databases: [],
         },
       },
+      expanded: [],
     };
   }
 }
