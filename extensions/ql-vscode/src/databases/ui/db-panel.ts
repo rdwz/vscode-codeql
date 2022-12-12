@@ -29,6 +29,15 @@ export class DbPanel extends DisposableObject {
       }),
     );
 
+    this.push(
+      treeView.onDidChangeSelection(async (e) => {
+        const selectedItem = e.selection[0];
+        if (selectedItem && selectedItem.contextValue === "selectableDbItem") {
+          await this.setSelectedItem(selectedItem);
+        }
+      }),
+    );
+
     this.push(treeView);
   }
 
