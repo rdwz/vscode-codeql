@@ -1,4 +1,10 @@
-import { pathExists, writeJSON, readJSON, readJSONSync } from "fs-extra";
+import {
+  pathExists,
+  writeJSON,
+  readJSON,
+  readJSONSync,
+  readFileSync,
+} from "fs-extra";
 import { join } from "path";
 import {
   cloneDbConfig,
@@ -16,6 +22,7 @@ import {
   DbConfigValidationErrorKind,
 } from "../db-validation-errors";
 import { ValueResult } from "../../common/value-result";
+import { extLogger } from "../../common";
 
 export class DbConfigStore extends DisposableObject {
   public readonly onDidChangeConfig: AppEvent<void>;
@@ -146,8 +153,18 @@ export class DbConfigStore extends DisposableObject {
   private readConfigSync(): void {
     let newConfig: DbConfig | undefined = undefined;
     try {
+      void extLogger.log(`About to read config file`);
+      const newConfigStr = readFileSync(this.configPath, "utf8");
+      void extLogger.log(`New config str: ${newConfigStr}`);
+
+      const newConfigJson = JSON.parse(newConfigStr) as DbConfig;
+      void extLogger.log(`New config json: ${newConfigJson}`);
+
       newConfig = readJSONSync(this.configPath);
-    } catch (e) {
+      void extLogger.log(`Successfully read config file`);
+    } catch (e: any) {
+      void extLogger.log(`Failed read config file ${e}`);
+
       this.configErrors = [
         {
           kind: DbConfigValidationErrorKind.InvalidJson,
@@ -166,9 +183,17 @@ export class DbConfigStore extends DisposableObject {
   }
 
   private watchConfig(): void {
-    this.configWatcher = chokidar.watch(this.configPath).on("change", () => {
-      this.readConfigSync();
-    });
+    this.configWatcher = chokidar
+      .watch(this.configPath, {
+        awaitWriteFinish: {
+          stabilityThreshold: 3000,
+          pollInterval: 100,
+        },
+      })
+      .on("change", () => {
+        void extLogger.log(`Watcher: config file changed`);
+        this.readConfigSync();
+      });
   }
 
   private createEmptyConfig(): DbConfig {
