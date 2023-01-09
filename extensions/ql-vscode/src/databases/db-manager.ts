@@ -11,10 +11,10 @@ import {
   RemoteUserDefinedListDbItem,
 } from "./db-item";
 import {
-  updateExpandedItem,
+  buildExpandedItems,
   replaceExpandedItem,
   ExpandedDbItem,
-  cleanNonExistentExpandedItems,
+  removeNonExistentExpandedItems,
 } from "./db-item-expansion";
 import {
   getSelectedDbItem,
@@ -75,19 +75,12 @@ export class DbManager {
     }
   }
 
-  public async updateDbItemExpandedState(
-    dbItem: DbItem,
-    itemExpanded: boolean,
-  ): Promise<void> {
-    const currentExpandedItems = this.getExpandedItems();
+  public async removeDbItemExpandedFromState(dbItem: DbItem): Promise<void> {
+    await this.updateDbItemExpandedState(dbItem, false);
+  }
 
-    const newExpandedItems = updateExpandedItem(
-      currentExpandedItems,
-      dbItem,
-      itemExpanded,
-    );
-
-    await this.updateExpandedItems(newExpandedItems);
+  public async addDbItemToExpandedState(dbItem: DbItem): Promise<void> {
+    await this.updateDbItemExpandedState(dbItem, true);
   }
 
   public async addNewRemoteRepo(
@@ -186,24 +179,41 @@ export class DbManager {
     );
   }
 
-  private async updateExpandedItems(items: ExpandedDbItem[]): Promise<void> {
-    let itemsToStore;
+  private async updateExpandedItems(
+    newExpandedItems: ExpandedDbItem[],
+  ): Promise<void> {
+    const existingDbItems = this.getDbItems();
 
-    const dbItemsResult = this.getDbItems();
-
-    if (dbItemsResult.isFailure) {
+    if (existingDbItems.isFailure) {
       // Log an error but don't throw an exception since if the db items are failing
       // to be read, then there is a bigger problem than the expanded state.
       void this.app.logger.log(
         `Could not read db items when calculating expanded state: ${JSON.stringify(
-          dbItemsResult.errors,
+          existingDbItems.errors,
         )}`,
       );
-      itemsToStore = items;
     } else {
-      itemsToStore = cleanNonExistentExpandedItems(items, dbItemsResult.value);
-    }
+      const itemsToStore = removeNonExistentExpandedItems(
+        newExpandedItems,
+        existingDbItems.value,
+      );
 
-    await this.setExpandedItems(itemsToStore);
+      await this.setExpandedItems(itemsToStore);
+    }
+  }
+
+  private async updateDbItemExpandedState(
+    dbItem: DbItem,
+    itemExpanded: boolean,
+  ): Promise<void> {
+    const currentExpandedItems = this.getExpandedItems();
+
+    const newExpandedItems = buildExpandedItems(
+      currentExpandedItems,
+      dbItem,
+      itemExpanded,
+    );
+
+    await this.updateExpandedItems(newExpandedItems);
   }
 }
