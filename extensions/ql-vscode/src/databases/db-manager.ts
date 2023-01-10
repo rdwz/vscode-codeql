@@ -20,7 +20,7 @@ import {
   getSelectedDbItem,
   mapDbItemToSelectedDbItem,
 } from "./db-item-selection";
-import { createLocalTree, createRemoteTree } from "./db-tree-creator";
+import { createRemoteTree } from "./db-tree-creator";
 import { DbConfigValidationError } from "./db-validation-errors";
 
 export class DbManager {
@@ -58,10 +58,13 @@ export class DbManager {
 
     const expandedItems = this.getExpandedItems();
 
-    return ValueResult.ok([
-      createRemoteTree(configResult.value, expandedItems),
-      createLocalTree(configResult.value, expandedItems),
-    ]);
+    const remoteTree = createRemoteTree(configResult.value, expandedItems);
+    return ValueResult.ok(remoteTree.children);
+
+    // return ValueResult.ok([
+    //   createRemoteTree(configResult.value, expandedItems),
+    //   createLocalTree(configResult.value, expandedItems),
+    // ]);
   }
 
   public getConfigPath(): string {
