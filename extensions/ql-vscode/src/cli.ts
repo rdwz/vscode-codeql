@@ -1,4 +1,3 @@
-import { EOL } from "os";
 import { spawn } from "child-process-promise";
 import * as child_process from "child_process";
 import { readFile } from "fs-extra";
@@ -158,9 +157,9 @@ interface BqrsDecodeOptions {
   entities?: string[];
 }
 
-export type OnLineCallback = (
-  line: string,
-) => Promise<string | undefined> | string | undefined;
+export type Redactor = (line: string) => string;
+
+export const defaultRedactor = (line: string) => line;
 
 /**
  * This class manages a cli server started by `codeql execute cli-server` to
@@ -310,7 +309,7 @@ export class CodeQLCliServer implements Disposable {
     command: string[],
     commandArgs: string[],
     description: string,
-    onLine?: OnLineCallback,
+    redactor: Redactor = defaultRedactor,
   ): Promise<string> {
     const stderrBuffers: Buffer[] = [];
     if (this.commandInProcess) {
@@ -329,28 +328,12 @@ export class CodeQLCliServer implements Disposable {
 
       // Compute the full args array
       const args = command.concat(LOGGING_FLAGS).concat(commandArgs);
-      const argsString = args.join(" ");
+      const argsString = redactor(args.join(" "));
       void this.logger.log(`${description} using CodeQL CLI: ${argsString}...`);
       try {
         await new Promise<void>((resolve, reject) => {
           // Start listening to stdout
           process.stdout.addListener("data", (newData: Buffer) => {
-            if (onLine) {
-              void (async () => {
-                const response = await onLine(newData.toString("utf-8"));
-
-                if (!response) {
-                  return;
-                }
-
-                process.stdin.write(`${response}${EOL}`);
-
-                // Remove newData from stdoutBuffers because the data has been consumed
-                // by the onLine callback.
-                stdoutBuffers.splice(stdoutBuffers.indexOf(newData), 1);
-              })();
-            }
-
             stdoutBuffers.push(newData);
             // If the buffer ends in '0' then exit.
             // We don't have to check the middle as no output will be written after the null until
@@ -375,7 +358,9 @@ export class CodeQLCliServer implements Disposable {
         // Join all the data together
         const fullBuffer = Buffer.concat(stdoutBuffers);
         // Make sure we remove the terminator;
-        const data = fullBuffer.toString("utf8", 0, fullBuffer.length - 1);
+        const data = redactor(
+          fullBuffer.toString("utf8", 0, fullBuffer.length - 1),
+        );
         void this.logger.log("CLI command succeeded.");
         return data;
       } catch (err) {
@@ -386,14 +371,16 @@ export class CodeQLCliServer implements Disposable {
           stderrBuffers.length == 0
             ? new Error(`${description} failed: ${err}`)
             : new Error(
-                `${description} failed: ${Buffer.concat(stderrBuffers).toString(
-                  "utf8",
+                `${description} failed: ${redactor(
+                  Buffer.concat(stderrBuffers).toString("utf8"),
                 )}`,
               );
         newError.stack += getErrorStack(err);
         throw newError;
       } finally {
-        void this.logger.log(Buffer.concat(stderrBuffers).toString("utf8"));
+        void this.logger.log(
+          redactor(Buffer.concat(stderrBuffers).toString("utf8")),
+        );
         // Remove the listeners we set up.
         process.stdout.removeAllListeners("data");
         process.stderr.removeAllListeners("data");
@@ -518,7 +505,7 @@ export class CodeQLCliServer implements Disposable {
     commandArgs: string[],
     description: string,
     progressReporter?: ProgressReporter,
-    onLine?: OnLineCallback,
+    redactor: Redactor = defaultRedactor,
   ): Promise<string> {
     if (progressReporter) {
       progressReporter.report({ message: description });
@@ -532,7 +519,7 @@ export class CodeQLCliServer implements Disposable {
             command,
             commandArgs,
             description,
-            onLine,
+            redactor,
           ).then(resolve, reject);
         } catch (err) {
           reject(err);
@@ -564,7 +551,7 @@ export class CodeQLCliServer implements Disposable {
     description: string,
     addFormat = true,
     progressReporter?: ProgressReporter,
-    onLine?: OnLineCallback,
+    redactor: Redactor = defaultRedactor,
   ): Promise<OutputType> {
     let args: string[] = [];
     if (addFormat)
@@ -576,7 +563,7 @@ export class CodeQLCliServer implements Disposable {
       args,
       description,
       progressReporter,
-      onLine,
+      redactor,
     );
     try {
       return JSON.parse(result) as OutputType;
@@ -605,12 +592,16 @@ export class CodeQLCliServer implements Disposable {
     addFormat = true,
     progressReporter?: ProgressReporter,
   ): Promise<OutputType> {
+    const credentials = await Credentials.initialize();
+    const accessToken = await credentials.getAccessToken();
+
     return this.runJsonCodeQlCliCommand(
       command,
-      ["--github-auth-stdin", ...commandArgs],
+      [`--github-auth-stdin=${accessToken}`, ...commandArgs],
       description,
       addFormat,
       progressReporter,
+      (line) => line.replaceAll(accessToken, "***"),
     );
   }
 
