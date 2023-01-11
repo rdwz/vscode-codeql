@@ -28,20 +28,18 @@ import { createMockApp } from "../../__mocks__/appMock";
 // Note: Although these are "unit tests" (i.e. not integrating with VS Code), they do
 // test the interaction/"integration" between the DbManager and the DbConfigStore.
 describe("db manager", () => {
+  const tempWorkspaceStoragePath = join(__dirname, "db-manager-test-workspace");
+  const extensionPath = join(__dirname, "../../..");
+  const app = createMockApp({
+    extensionPath,
+    workspaceStoragePath: tempWorkspaceStoragePath,
+  });
+
   let dbManager: DbManager;
   let dbConfigStore: DbConfigStore;
-  let tempWorkspaceStoragePath: string;
   let dbConfigFilePath: string;
 
   beforeEach(async () => {
-    tempWorkspaceStoragePath = join(__dirname, "db-manager-test-workspace");
-
-    const extensionPath = join(__dirname, "../../..");
-    const app = createMockApp({
-      extensionPath,
-      workspaceStoragePath: tempWorkspaceStoragePath,
-    });
-
     dbConfigStore = new DbConfigStore(app);
     dbManager = new DbManager(app, dbConfigStore);
     await ensureDir(tempWorkspaceStoragePath);
