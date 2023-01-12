@@ -2,7 +2,7 @@
 
 This project is an extension for Visual Studio Code that adds rich language support for CodeQL. It's used to find problems in code bases using CodeQL. It's written primarily in TypeScript.
 
-The extension is released. You can download it from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=github.vscode-codeql).
+The extension is released. You can download it from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=github.vscode-codeql) or [Open VSX Registry](https://open-vsx.org/extension/GitHub/vscode-codeql).
 
 To see what has changed in the last few versions of the extension, see the [Changelog](https://github.com/github/vscode-codeql/blob/main/extensions/ql-vscode/CHANGELOG.md).
 
